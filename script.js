@@ -9,10 +9,14 @@
   "use strict";
 
   // ---- Config ----
-  const BUSINESS_WHATSAPP_NUMBER = "919042389819"; // country code + number, no symbols
+  const BUSINESS_SMS_NUMBER = "9042389819"; // used for sms: link
+  // Office hours: 5 PM - 10 PM, 3 slots per hour (20 min each) = 15 slots/day
   const DAILY_SLOTS = [
-    "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM",
-    "11:30 AM", "12:00 PM", "1:00 PM", "1:30 PM", "2:00 PM"
+    "5:00 PM", "5:20 PM", "5:40 PM",
+    "6:00 PM", "6:20 PM", "6:40 PM",
+    "7:00 PM", "7:20 PM", "7:40 PM",
+    "8:00 PM", "8:20 PM", "8:40 PM",
+    "9:00 PM", "9:20 PM", "9:40 PM"
   ];
   const STORAGE_KEY = "src_bookings_v1";
 
@@ -90,51 +94,44 @@
     }
 
     const bookedSlots = getBookedSlotsForDate(dateStr);
+    const availableSlots = DAILY_SLOTS.filter((slot) => !bookedSlots.includes(slot));
 
-    DAILY_SLOTS.forEach((slot) => {
+    if (availableSlots.length === 0) {
+      const full = document.createElement("p");
+      full.className = "slot-hint";
+      full.textContent = "All slots for this date are fully booked (5 PM – 10 PM). Please choose another date.";
+      slotGrid.appendChild(full);
+      return;
+    }
+
+    availableSlots.forEach((slot) => {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "slot-btn";
       btn.textContent = slot;
-
-      const isFull = bookedSlots.includes(slot);
-      if (isFull) {
-        btn.classList.add("full");
-        btn.disabled = true;
-      } else {
-        btn.addEventListener("click", () => {
-          document.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
-          btn.classList.add("selected");
-          selectedSlotInput.value = slot;
-        });
-      }
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".slot-btn").forEach((b) => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        selectedSlotInput.value = slot;
+      });
       slotGrid.appendChild(btn);
     });
-
-    if (bookedSlots.length >= DAILY_SLOTS.length) {
-      const full = document.createElement("p");
-      full.className = "slot-hint";
-      full.textContent = "All 10 slots for this date are fully booked. Please choose another date.";
-      slotGrid.appendChild(full);
-    }
   }
 
   if (visitDateInput) {
     visitDateInput.addEventListener("change", (e) => renderSlots(e.target.value));
   }
 
-  // ---- Build WhatsApp click-to-chat link ----
-  function buildWhatsAppLink({ bookingNo, name, phone, service, dateStr, slot }) {
+  // ---- Build SMS link ----
+  function buildSmsLink({ bookingNo, name, phone, service, dateStr, slot }) {
     const message =
-      `*New Appointment Booking - Sai Ram Communications*%0A` +
-      `Booking No: *${bookingNo}*%0A` +
-      `Name: ${name}%0A` +
-      `Phone: ${phone}%0A` +
-      `Service: ${service}%0A` +
-      `Scheduled Date: ${formatDateNice(dateStr)}%0A` +
-      `Time Slot: ${slot}%0A` +
-      `(Sent automatically from website booking form)`;
-    return `https://wa.me/${BUSINESS_WHATSAPP_NUMBER}?text=${message}`;
+      `Sai Ram Communications - Appointment Confirmed. ` +
+      `Booking No: ${bookingNo}. Name: ${name}. Service: ${service}. ` +
+      `Date: ${formatDateNice(dateStr)}. Time: ${slot}. ` +
+      `Visit our office (5 PM - 10 PM) with your documents.`;
+    const encodedMsg = encodeURIComponent(message);
+    // sms: URI works on mobile devices to open the messaging app with the body pre-filled
+    return `sms:${BUSINESS_SMS_NUMBER}?&body=${encodedMsg}`;
   }
 
   // ---- Handle form submit ----
@@ -182,14 +179,14 @@
       confSlot.textContent = slot;
       confService.textContent = service;
 
-      const waLink = buildWhatsAppLink({ bookingNo, name: fullName, phone, service, dateStr, slot });
+      const waLink = buildSmsLink({ bookingNo, name: fullName, phone, service, dateStr, slot });
       whatsappConfirmLink.href = waLink;
 
       bookingForm.hidden = true;
       confirmCard.hidden = false;
       confirmCard.scrollIntoView({ behavior: "smooth", block: "center" });
 
-      // Auto-open WhatsApp with prefilled confirmation message
+      // Auto-open SMS app with prefilled confirmation message
       window.open(waLink, "_blank");
     });
   }
