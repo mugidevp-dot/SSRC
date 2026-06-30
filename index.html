@@ -51,7 +51,7 @@
         </a>
       </div>
       <div class="hero-stats">
-        <div class="stat"><strong>10</strong><span>Daily Visit Slots</span></div>
+        <div class="stat"><strong>15</strong><span>Daily Visit Slots (5–10 PM)</span></div>
         <div class="stat"><strong>3+</strong><span>Core Esevai Services</span></div>
         <div class="stat"><strong>S Kolathur</strong><span>Walk-in Office</span></div>
       </div>
@@ -110,25 +110,25 @@
       <p class="section-sub">Skip the waiting line. Pick a service, choose a free slot for today or any upcoming day, and we'll have your file ready before you arrive.</p>
       <ol class="how-steps">
         <li><span>1</span> Choose your service and preferred date</li>
-        <li><span>2</span> Pick one of the 10 daily visit slots</li>
-        <li><span>3</span> Get your booking number &amp; confirm via WhatsApp</li>
+        <li><span>2</span> Pick one of the available slots (5 PM – 10 PM)</li>
+        <li><span>3</span> Get your booking number &amp; confirmation by SMS</li>
         <li><span>4</span> Walk in at your scheduled time with documents</li>
       </ol>
     </div>
     <div class="how-visual" aria-hidden="true">
       <div class="slot-preview">
-        <div class="slot-preview-head">Today's Slots</div>
+        <div class="slot-preview-head">Today's Slots · 5 PM – 10 PM</div>
         <div class="slot-preview-grid">
-          <span class="mini-slot taken">9:00</span>
-          <span class="mini-slot taken">9:30</span>
-          <span class="mini-slot">10:00</span>
-          <span class="mini-slot">10:30</span>
-          <span class="mini-slot">11:00</span>
-          <span class="mini-slot taken">11:30</span>
-          <span class="mini-slot">12:00</span>
-          <span class="mini-slot">12:30</span>
-          <span class="mini-slot">2:00</span>
-          <span class="mini-slot">2:30</span>
+          <span class="mini-slot taken">5:00</span>
+          <span class="mini-slot taken">5:20</span>
+          <span class="mini-slot">5:40</span>
+          <span class="mini-slot">6:00</span>
+          <span class="mini-slot">6:20</span>
+          <span class="mini-slot taken">6:40</span>
+          <span class="mini-slot">7:00</span>
+          <span class="mini-slot">7:20</span>
+          <span class="mini-slot">8:00</span>
+          <span class="mini-slot">9:00</span>
         </div>
       </div>
     </div>
@@ -140,7 +140,7 @@
   <div class="container">
     <span class="section-eyebrow">Offline visit booking</span>
     <h2 class="section-title">Book your appointment slot</h2>
-    <p class="section-sub">10 visit slots are available per day. Fill in your details, choose a free slot, and your booking number with the scheduled date will be ready to send straight to our WhatsApp.</p>
+    <p class="section-sub">Office hours: 5 PM – 10 PM, with 3 visit slots available every hour. Fill in your details, choose a free slot, and your booking number with the scheduled date will be sent to you by SMS.</p>
 
     <div class="booking-box">
       <form id="bookingForm" class="booking-form" novalidate>
@@ -178,7 +178,7 @@
         </div>
 
         <button type="submit" class="btn btn-primary btn-block">Confirm Booking</button>
-        <p class="form-note">After confirming, your booking details open in WhatsApp — just hit send to notify us.</p>
+        <p class="form-note">After confirming, your booking details open in your Messages app — just hit send to notify us, and we'll SMS you the confirmation.</p>
       </form>
 
       <div id="confirmCard" class="confirm-card" hidden>
@@ -191,7 +191,7 @@
           <div><span>Time Slot</span><strong id="confSlot"></strong></div>
           <div><span>Service</span><strong id="confService"></strong></div>
         </div>
-        <a id="whatsappConfirmLink" class="btn btn-whatsapp btn-block" target="_blank" rel="noopener">Send Confirmation on WhatsApp</a>
+        <a id="whatsappConfirmLink" class="btn btn-primary btn-block" target="_blank" rel="noopener">Send Confirmation by SMS</a>
         <button type="button" id="newBookingBtn" class="btn btn-ghost btn-block">Make Another Booking</button>
       </div>
     </div>
@@ -219,7 +219,7 @@
         </li>
         <li>
           <span class="contact-icon">🕒</span>
-          <div><strong>Working Hours</strong><p>Mon – Sat, 9:00 AM – 7:00 PM</p></div>
+          <div><strong>Working Hours</strong><p>Mon – Sat, 5:00 PM – 10:00 PM</p></div>
         </li>
       </ul>
       <div class="contact-actions">
