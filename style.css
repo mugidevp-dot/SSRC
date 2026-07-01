@@ -86,6 +86,14 @@ h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; }
 }
 .btn-ghost:hover { background: var(--ink); color: var(--white); }
 
+.btn-outline {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.btn-outline:hover { border-color: var(--ink); color: var(--ink); }
+
 .btn-block { width: 100%; }
 
 /* ---------- Header ---------- */
@@ -555,4 +563,249 @@ section { padding: 90px 0; }
   .contact-card { padding: 30px 22px; }
   .hero { padding: 60px 0 70px; }
   section { padding: 60px 0; }
+}
+
+/* =========================================================
+   v4 additions — Document panel, timing card, slot sessions
+========================================================= */
+
+/* ---- Booking two-column layout ---- */
+.booking-layout {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 28px;
+  align-items: start;
+}
+
+/* ---- Document panel (right column) ---- */
+.doc-panel {
+  position: sticky;
+  top: 90px;
+}
+
+.doc-panel-inner {
+  background: var(--green-deep);
+  border-radius: var(--radius);
+  padding: 28px 24px;
+  color: var(--white);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: var(--shadow);
+}
+
+.doc-panel-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 22px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.15);
+}
+
+.doc-icon {
+  font-size: 1.8rem;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.doc-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gold-light);
+  margin-bottom: 4px;
+}
+
+.doc-service-name {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--white);
+}
+
+.doc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.doc-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.88rem;
+  color: rgba(255,255,255,0.88);
+  line-height: 1.45;
+}
+
+.doc-list li::before {
+  content: "✓";
+  color: var(--gold-light);
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.doc-footer {
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.5);
+  border-top: 1px solid rgba(255,255,255,0.1);
+  padding-top: 14px;
+  line-height: 1.5;
+}
+
+/* ---- Slot timing note ---- */
+.slot-timing-note {
+  font-size: 0.78rem;
+  color: var(--green);
+  font-weight: 500;
+  margin-bottom: 12px;
+  padding: 7px 12px;
+  background: rgba(20,108,67,0.08);
+  border-radius: 6px;
+  border-left: 3px solid var(--green);
+}
+
+/* ---- Slot session labels ---- */
+.session-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 14px 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.session-label:first-child { margin-top: 0; }
+
+.lunch-gap {
+  background: var(--yellow-soft);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--ink-soft) !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+  font-size: 0.82rem !important;
+}
+
+/* ---- Slot button row ---- */
+.slot-btn-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+/* ---- Services grid – 4 cols → expanded to 4 on desktop ---- */
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 22px;
+}
+
+/* ---- Timing card in how-it-works ---- */
+.timing-card {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius);
+  padding: 28px 26px;
+  backdrop-filter: blur(6px);
+}
+
+.timing-head {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--gold-light);
+  margin-bottom: 20px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.timing-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.timing-row:last-of-type { border-bottom: none; }
+
+.timing-day {
+  font-size: 0.82rem;
+  font-weight: 600;
+  min-width: 72px;
+  padding-top: 4px;
+}
+
+.timing-day.weekday { color: rgba(255,255,255,0.75); }
+.timing-day.weekend { color: var(--gold-light); }
+
+.timing-sessions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tsession {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.tsession.morning {
+  background: rgba(240,199,94,0.18);
+  color: var(--gold-light);
+}
+
+.tsession.evening {
+  background: rgba(31,138,87,0.22);
+  color: #7de8a8;
+}
+
+.tsession.lunch {
+  background: transparent;
+  color: rgba(255,255,255,0.4);
+  font-size: 0.77rem;
+  padding: 0 4px;
+}
+
+.timing-note {
+  margin-top: 16px;
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.45);
+  text-align: center;
+}
+
+/* ---- Buttons ---- */
+.btn-outline {
+  background: transparent;
+  border-color: var(--line);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.btn-outline:hover { border-color: var(--ink); color: var(--ink); }
+
+/* ---- Responsive ---- */
+@media (max-width: 1100px) {
+  .booking-layout { grid-template-columns: 1fr; }
+  .doc-panel { position: static; }
+  .doc-panel-inner { background: var(--green-deep); }
+}
+
+@media (max-width: 900px) {
+  .services-grid { grid-template-columns: repeat(2, 1fr); }
+  .slot-btn-row { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 560px) {
+  .services-grid { grid-template-columns: 1fr; }
+  .slot-btn-row { grid-template-columns: repeat(2, 1fr); }
+  .confirm-grid { grid-template-columns: 1fr; }
+  .booking-box { padding: 22px 16px; }
+  .contact-card { padding: 28px 18px; }
 }
