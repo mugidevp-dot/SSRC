@@ -1,25 +1,19 @@
 /* =========================================================
-   Sai Ram Communications — Booking Logic v4
-   Mon–Fri : 5 PM – 10 PM | 2 slots/hour | 10 slots/day
-   Sat–Sun : 10 AM – 2 PM + 5 PM – 10 PM | 2 slots/hour | 18 slots/day
-   Document panel updates live when service is selected.
+   Sai Ram Communications — script.js v5
+   • Offline booking with WhatsApp confirmation
+   • Online application with file upload (PDF/JPEG/PNG ≤ 20 MB)
+     Files are emailed to SSRC7010@gmail.com via FormSubmit.co
+     (Free service — no backend needed. First submission will
+     send a one-time verification email to SSRC7010@gmail.com
+     — click Verify, then all future submissions arrive instantly.)
 ========================================================= */
 (function () {
   "use strict";
 
-  const BUSINESS_WHATSAPP_NUMBER = "919042389819";
-  const STORAGE_KEY = "src_bookings_v2";
-
-  /* ── SERVICES & DOCUMENTS ─────────────────────────────
-     Add new services here. Each entry:
-       label    : shown in the dropdown
-       docs     : array of required document strings
-     To add a new service later, just add another object.
-  ──────────────────────────────────────────────────── */
-  /* ── SERVICES & DOCUMENTS ─────────────────────────────
-     To add a new service: add a new object with label + docs.
-     Use "|OR|" as a separator for "either/or" document options.
-  ──────────────────────────────────────────────────── */
+  /* ══ SERVICES & DOCUMENTS ════════════════════════════════
+     To add a new service: add an object with label + docs.
+     Use "|OR|" inside a doc string for "either / or" options.
+  ════════════════════════════════════════════════════════ */
   const SERVICES = [
     {
       label: "Community Certificate",
@@ -108,121 +102,110 @@
     }
   ];
 
-  /* ── SLOT DEFINITIONS ───────────────────────────────── */
+  /* ══ SLOT CONFIG ═════════════════════════════════════════
+     Mon–Fri : 5 PM – 10 PM  | 2 slots/hour | 10/day
+     Sat–Sun : 10 AM – 2 PM + 5 PM – 10 PM | 2/hour | 18/day
+  ════════════════════════════════════════════════════════ */
   const WEEKDAY_SLOTS = [
-    { time: "5:00 PM", session: "evening" },
-    { time: "5:30 PM", session: "evening" },
-    { time: "6:00 PM", session: "evening" },
-    { time: "6:30 PM", session: "evening" },
-    { time: "7:00 PM", session: "evening" },
-    { time: "7:30 PM", session: "evening" },
-    { time: "8:00 PM", session: "evening" },
-    { time: "8:30 PM", session: "evening" },
-    { time: "9:00 PM", session: "evening" },
-    { time: "9:30 PM", session: "evening" }
+    {time:"5:00 PM",session:"evening"},{time:"5:30 PM",session:"evening"},
+    {time:"6:00 PM",session:"evening"},{time:"6:30 PM",session:"evening"},
+    {time:"7:00 PM",session:"evening"},{time:"7:30 PM",session:"evening"},
+    {time:"8:00 PM",session:"evening"},{time:"8:30 PM",session:"evening"},
+    {time:"9:00 PM",session:"evening"},{time:"9:30 PM",session:"evening"}
   ];
-
   const WEEKEND_SLOTS = [
-    { time: "10:00 AM", session: "morning" },
-    { time: "10:30 AM", session: "morning" },
-    { time: "11:00 AM", session: "morning" },
-    { time: "11:30 AM", session: "morning" },
-    { time: "12:00 PM", session: "morning" },
-    { time: "12:30 PM", session: "morning" },
-    { time: "1:00 PM",  session: "morning" },
-    { time: "1:30 PM",  session: "morning" },
-    // lunch gap — no 2 PM to 5 PM
-    { time: "5:00 PM", session: "evening" },
-    { time: "5:30 PM", session: "evening" },
-    { time: "6:00 PM", session: "evening" },
-    { time: "6:30 PM", session: "evening" },
-    { time: "7:00 PM", session: "evening" },
-    { time: "7:30 PM", session: "evening" },
-    { time: "8:00 PM", session: "evening" },
-    { time: "8:30 PM", session: "evening" },
-    { time: "9:00 PM", session: "evening" },
-    { time: "9:30 PM", session: "evening" }
+    {time:"10:00 AM",session:"morning"},{time:"10:30 AM",session:"morning"},
+    {time:"11:00 AM",session:"morning"},{time:"11:30 AM",session:"morning"},
+    {time:"12:00 PM",session:"morning"},{time:"12:30 PM",session:"morning"},
+    {time:"1:00 PM", session:"morning"},{time:"1:30 PM", session:"morning"},
+    {time:"5:00 PM", session:"evening"},{time:"5:30 PM", session:"evening"},
+    {time:"6:00 PM", session:"evening"},{time:"6:30 PM", session:"evening"},
+    {time:"7:00 PM", session:"evening"},{time:"7:30 PM", session:"evening"},
+    {time:"8:00 PM", session:"evening"},{time:"8:30 PM", session:"evening"},
+    {time:"9:00 PM", session:"evening"},{time:"9:30 PM", session:"evening"}
   ];
+  const STORAGE_KEY = "src_bookings_v2";
+  const MAX_UPLOAD_BYTES = 20 * 1024 * 1024; // 20 MB
+  const ALLOWED_TYPES = ["application/pdf","image/jpeg","image/png","image/jpg"];
+  const ALLOWED_EXT   = /\.(pdf|jpg|jpeg|png)$/i;
 
-  function getSlotsForDate(dateStr) {
-    const d = new Date(dateStr + "T00:00:00");
-    const day = d.getDay(); // 0 = Sun, 6 = Sat
-    return (day === 0 || day === 6) ? WEEKEND_SLOTS : WEEKDAY_SLOTS;
-  }
+  /* ══ STORAGE ════════════════════════════════════════════ */
+  function loadBookings(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||"{}")}catch(e){return{}}}
+  function saveBookings(d){localStorage.setItem(STORAGE_KEY,JSON.stringify(d))}
+  function getBooked(date){const d=loadBookings();return d[date]?Object.keys(d[date]):[]}
+  function addBooking(date,slot,info){const d=loadBookings();if(!d[date])d[date]={};d[date][slot]=info;saveBookings(d)}
 
-  function isWeekend(dateStr) {
-    const d = new Date(dateStr + "T00:00:00");
-    const day = d.getDay();
-    return day === 0 || day === 6;
-  }
+  /* ══ UTILS ══════════════════════════════════════════════ */
+  function genBookingNo(date){return`SRC-${date.replace(/-/g,"").slice(2)}-${Math.floor(100+Math.random()*900)}`}
+  function fmtDate(date){return new Date(date+"T00:00:00").toLocaleDateString("en-IN",{weekday:"short",day:"2-digit",month:"short",year:"numeric"})}
+  function isWeekend(date){const d=new Date(date+"T00:00:00").getDay();return d===0||d===6}
+  function fmtBytes(b){if(b<1024)return b+" B";if(b<1048576)return(b/1024).toFixed(1)+" KB";return(b/1048576).toFixed(1)+" MB"}
 
-  /* ── STORAGE ────────────────────────────────────────── */
-  function loadBookings() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
-    catch(e) { return {}; }
-  }
-  function saveBookings(data) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  }
-  function getBookedSlotsForDate(dateStr) {
-    const data = loadBookings();
-    return data[dateStr] ? Object.keys(data[dateStr]) : [];
-  }
-  function addBooking(dateStr, slot, details) {
-    const data = loadBookings();
-    if (!data[dateStr]) data[dateStr] = {};
-    data[dateStr][slot] = details;
-    saveBookings(data);
-  }
+  /* ══ DOM REFS ═══════════════════════════════════════════ */
+  const $ = id => document.getElementById(id);
+  const visitDateInput   = $("visitDate");
+  const slotGrid         = $("slotGrid");
+  const slotDateLabel    = $("slotDateLabel");
+  const slotTimingNote   = $("slotTimingNote");
+  const selectedSlotInput= $("selectedSlot");
+  const serviceSelect    = $("service");
+  const docPanel         = $("docPanel");
+  const docList          = $("docList");
+  const docServiceName   = $("docServiceName");
+  const bookingForm      = $("bookingForm");
+  const confirmCard      = $("confirmCard");
+  const waCustomerLink   = $("waCustomerLink");
+  const waOwnerLink      = $("waOwnerLink");
+  const newBookingBtn    = $("newBookingBtn");
+  const olService        = $("ol-service");
+  const docPanelOnline   = $("docPanelOnline");
+  const docListOnline    = $("docListOnline");
+  const docServiceOnline = $("docServiceNameOnline");
+  const uploadZone       = $("uploadZone");
+  const fileInput        = $("fileInput");
+  const fileList         = $("fileList");
+  const uploadTotal      = $("uploadTotal");
+  const onlineForm       = $("onlineForm");
+  const onlineSuccess    = $("onlineSuccess");
+  const onlineSubmitBtn  = $("onlineSubmitBtn");
+  const onlineResetBtn   = $("onlineResetBtn");
+  const navToggle        = $("navToggle");
+  const mainNav          = $("mainNav");
+  const heroOnlineBtn    = $("heroOnlineBtn");
 
-  /* ── UTILS ──────────────────────────────────────────── */
-  function generateBookingNumber(dateStr) {
-    const compact = dateStr.replace(/-/g, "").slice(2);
-    return `SRC-${compact}-${Math.floor(100 + Math.random() * 900)}`;
+  /* ══ TAB SWITCHING ══════════════════════════════════════ */
+  function switchTab(which) {
+    document.querySelectorAll(".btab").forEach(b => b.classList.toggle("active", b.dataset.tab === which));
+    $("tabOffline").hidden = (which !== "offline");
+    $("tabOnline").hidden  = (which !== "online");
   }
-  function formatDateNice(dateStr) {
-    return new Date(dateStr + "T00:00:00").toLocaleDateString("en-IN", {
-      weekday: "short", day: "2-digit", month: "short", year: "numeric"
+  document.querySelectorAll(".btab").forEach(btn => {
+    btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+  });
+  if (heroOnlineBtn) {
+    heroOnlineBtn.addEventListener("click", e => {
+      e.preventDefault();
+      document.querySelector("#booking").scrollIntoView({behavior:"smooth"});
+      setTimeout(() => switchTab("online"), 400);
     });
   }
 
-  /* ── DOM REFS ───────────────────────────────────────── */
-  const visitDateInput   = document.getElementById("visitDate");
-  const slotGrid         = document.getElementById("slotGrid");
-  const slotDateLabel    = document.getElementById("slotDateLabel");
-  const slotTimingNote   = document.getElementById("slotTimingNote");
-  const selectedSlotInput= document.getElementById("selectedSlot");
-  const serviceSelect    = document.getElementById("service");
-  const docPanel         = document.getElementById("docPanel");
-  const docList          = document.getElementById("docList");
-  const docServiceName   = document.getElementById("docServiceName");
-  const bookingForm      = document.getElementById("bookingForm");
-  const confirmCard      = document.getElementById("confirmCard");
-  const confBookingNo    = document.getElementById("confBookingNo");
-  const confDate         = document.getElementById("confDate");
-  const confSlot         = document.getElementById("confSlot");
-  const confService      = document.getElementById("confService");
-  const waCustomerLink   = document.getElementById("waCustomerLink");
-  const waOwnerLink      = document.getElementById("waOwnerLink");
-  const newBookingBtn    = document.getElementById("newBookingBtn");
-  const navToggle        = document.getElementById("navToggle");
-  const mainNav          = document.getElementById("mainNav");
-
-  /* ── POPULATE SERVICES DROPDOWN ─────────────────────── */
+  /* ══ POPULATE SERVICE DROPDOWNS ════════════════════════ */
   SERVICES.forEach((svc, i) => {
-    const opt = document.createElement("option");
-    opt.value = i;
-    opt.textContent = svc.label;
-    serviceSelect.appendChild(opt);
+    [serviceSelect, olService].forEach(sel => {
+      const opt = document.createElement("option");
+      opt.value = i;
+      opt.textContent = svc.label;
+      sel.appendChild(opt);
+    });
   });
 
-  /* ── DOCUMENT PANEL ─────────────────────────────────── */
+  /* ══ DOCUMENT PANEL RENDERER ════════════════════════════ */
   function renderDocItem(docStr) {
-    // If the doc string contains |OR|, split into alternatives
     if (docStr.includes("|OR|")) {
       const parts = docStr.split("|OR|");
-      const inner = parts.map((p, i) =>
-        i < parts.length - 1
+      const inner = parts.map((p,i) =>
+        i < parts.length-1
           ? `<span class="doc-option">${p.trim()}</span><span class="doc-or">or</span>`
           : `<span class="doc-option">${p.trim()}</span>`
       ).join("");
@@ -231,203 +214,311 @@
     return `<li>${docStr}</li>`;
   }
 
-  function showDocPanel(index) {
+  function showDocPanel(index, listEl, nameEl, panelEl) {
     const svc = SERVICES[index];
-    if (!svc) { docPanel.hidden = true; return; }
-    docServiceName.textContent = svc.label;
-    docList.innerHTML = svc.docs.map(renderDocItem).join("");
-    docPanel.hidden = false;
+    if (!svc) { panelEl.hidden = true; return; }
+    nameEl.textContent = svc.label;
+    listEl.innerHTML = svc.docs.map(renderDocItem).join("");
+    panelEl.hidden = false;
   }
 
-  serviceSelect.addEventListener("change", function () {
-    const idx = this.value;
-    if (idx === "") { docPanel.hidden = true; return; }
-    showDocPanel(parseInt(idx, 10));
+  serviceSelect.addEventListener("change", function(){
+    if(this.value===""){docPanel.hidden=true;return}
+    showDocPanel(parseInt(this.value),docList,docServiceName,docPanel);
+  });
+  olService.addEventListener("change", function(){
+    if(this.value===""){docPanelOnline.hidden=true;return}
+    showDocPanel(parseInt(this.value),docListOnline,docServiceOnline,docPanelOnline);
   });
 
-  /* ── SLOT RENDERING ─────────────────────────────────── */
-  function renderSlots(dateStr) {
+  /* ══ SLOT RENDERING ═════════════════════════════════════ */
+  function renderSlots(date) {
     slotGrid.innerHTML = "";
     selectedSlotInput.value = "";
-    slotDateLabel.textContent = dateStr ? `— ${formatDateNice(dateStr)}` : "";
+    slotDateLabel.textContent = date ? `— ${fmtDate(date)}` : "";
+    if (!date) { slotGrid.innerHTML='<p class="slot-hint">Choose a date to see available slots.</p>'; slotTimingNote.textContent=""; return; }
 
-    if (!dateStr) {
-      slotGrid.innerHTML = '<p class="slot-hint">Choose a date to see available slots.</p>';
-      slotTimingNote.textContent = "";
-      return;
-    }
-
-    const weekend = isWeekend(dateStr);
-    slotTimingNote.textContent = weekend
-      ? "Weekend: 10 AM–2 PM (Morning) · 5 PM–10 PM (Evening) · 2 slots/hour"
+    slotTimingNote.textContent = isWeekend(date)
+      ? "Weekend: Morning 10 AM–2 PM · Evening 5 PM–10 PM · 2 slots/hour"
       : "Weekday: 5 PM–10 PM · 2 slots/hour · 10 slots/day";
 
-    const allSlots    = getSlotsForDate(dateStr);
-    const bookedSlots = getBookedSlotsForDate(dateStr);
-    const available   = allSlots.filter(s => !bookedSlots.includes(s.time));
+    const all     = isWeekend(date) ? WEEKEND_SLOTS : WEEKDAY_SLOTS;
+    const booked  = getBooked(date);
+    const avail   = all.filter(s => !booked.includes(s.time));
 
-    if (available.length === 0) {
-      slotGrid.innerHTML = '<p class="slot-hint">All slots for this date are fully booked. Please choose another date.</p>';
+    if (!avail.length) {
+      slotGrid.innerHTML='<p class="slot-hint">All slots for this date are fully booked. Please choose another date.</p>';
       return;
     }
 
-    // Group by session so we can show a lunch label on weekends
     const sessions = {};
-    available.forEach(s => {
-      if (!sessions[s.session]) sessions[s.session] = [];
-      sessions[s.session].push(s);
-    });
+    avail.forEach(s => { if(!sessions[s.session])sessions[s.session]=[]; sessions[s.session].push(s); });
 
-    if (sessions.morning && sessions.morning.length) {
-      const label = document.createElement("p");
-      label.className = "session-label";
-      label.textContent = "🌅 Morning Session";
-      slotGrid.appendChild(label);
-      renderSlotButtons(sessions.morning);
+    if (sessions.morning) {
+      const lbl = document.createElement("p"); lbl.className="session-label"; lbl.textContent="🌅 Morning Session"; slotGrid.appendChild(lbl);
+      appendSlotBtns(sessions.morning);
     }
-
     if (sessions.morning && sessions.evening) {
-      const gap = document.createElement("p");
-      gap.className = "session-label lunch-gap";
-      gap.textContent = "🍽️ Lunch Break · 2:00 PM – 5:00 PM";
-      slotGrid.appendChild(gap);
+      const gap = document.createElement("p"); gap.className="session-label lunch-gap"; gap.textContent="🍽️ Lunch Break · 2:00 PM – 5:00 PM"; slotGrid.appendChild(gap);
+      const lbl = document.createElement("p"); lbl.className="session-label"; lbl.textContent="🌆 Evening Session"; slotGrid.appendChild(lbl);
     }
-
-    if (sessions.evening && sessions.evening.length) {
-      if (sessions.morning) {
-        const label = document.createElement("p");
-        label.className = "session-label";
-        label.textContent = "🌆 Evening Session";
-        slotGrid.appendChild(label);
-      }
-      renderSlotButtons(sessions.evening);
-    }
+    if (sessions.evening) appendSlotBtns(sessions.evening);
   }
 
-  function renderSlotButtons(slots) {
-    const wrap = document.createElement("div");
-    wrap.className = "slot-btn-row";
+  function appendSlotBtns(slots) {
+    const row = document.createElement("div"); row.className="slot-btn-row";
     slots.forEach(s => {
       const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "slot-btn";
-      btn.textContent = s.time;
+      btn.type="button"; btn.className="slot-btn"; btn.textContent=s.time;
       btn.addEventListener("click", () => {
-        document.querySelectorAll(".slot-btn").forEach(b => b.classList.remove("selected"));
-        btn.classList.add("selected");
-        selectedSlotInput.value = s.time;
+        document.querySelectorAll(".slot-btn").forEach(b=>b.classList.remove("selected"));
+        btn.classList.add("selected"); selectedSlotInput.value=s.time;
       });
-      wrap.appendChild(btn);
+      row.appendChild(btn);
     });
-    slotGrid.appendChild(wrap);
+    slotGrid.appendChild(row);
   }
 
-  /* ── INIT DATE ──────────────────────────────────────── */
   if (visitDateInput) {
-    const todayStr = new Date().toISOString().split("T")[0];
-    visitDateInput.min = todayStr;
-    visitDateInput.value = todayStr;
-    renderSlots(todayStr);
+    const today = new Date().toISOString().split("T")[0];
+    visitDateInput.min = today;
+    visitDateInput.value = today;
+    renderSlots(today);
     visitDateInput.addEventListener("change", e => renderSlots(e.target.value));
   }
 
-  /* ── WHATSAPP LINKS ─────────────────────────────────── */
-  function buildCustomerWA({ bookingNo, name, service, dateStr, slot }) {
-    const phone = document.getElementById("phone").value.trim();
-    const msg =
-      `*Sai Ram Communications — Appointment Confirmed ✅*%0A%0A` +
-      `Hello ${name},%0A` +
-      `Your appointment is successfully booked.%0A%0A` +
-      `📋 *Booking No:* ${bookingNo}%0A` +
-      `🛎️ *Service:* ${service}%0A` +
-      `📅 *Date:* ${formatDateNice(dateStr)}%0A` +
-      `🕔 *Time Slot:* ${slot}%0A%0A` +
-      `📍 Sai Ram Communications, S Kolathur, Chennai%0A` +
-      `⏰ Please arrive on time with your original documents.%0A` +
-      `📞 Queries: 90423 89819`;
-    return `https://wa.me/91${phone}?text=${msg}`;
-  }
+  /* ══ WHATSAPP LINKS ═════════════════════════════════════ */
+  function waLink(phone, msg){ return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`; }
 
-  function buildOwnerWA({ bookingNo, name, phone, service, dateStr, slot }) {
-    const msg =
-      `*New Booking Alert — Sai Ram Communications 🔔*%0A%0A` +
-      `📋 *Booking No:* ${bookingNo}%0A` +
-      `👤 *Customer:* ${name}%0A` +
-      `📞 *Phone:* ${phone}%0A` +
-      `🛎️ *Service:* ${service}%0A` +
-      `📅 *Date:* ${formatDateNice(dateStr)}%0A` +
-      `🕔 *Time:* ${slot}`;
-    return `https://wa.me/${BUSINESS_WHATSAPP_NUMBER}?text=${msg}`;
-  }
-
-  /* ── FORM SUBMIT ────────────────────────────────────── */
+  /* ══ OFFLINE BOOKING SUBMIT ═════════════════════════════ */
   if (bookingForm) {
-    bookingForm.addEventListener("submit", function (e) {
+    bookingForm.addEventListener("submit", function(e){
       e.preventDefault();
+      const name    = $("fullName").value.trim();
+      const phone   = $("phone").value.trim();
+      const svcIdx  = serviceSelect.value;
+      const date    = visitDateInput.value;
+      const slot    = selectedSlotInput.value;
 
-      const fullName   = document.getElementById("fullName").value.trim();
-      const phone      = document.getElementById("phone").value.trim();
-      const svcIdx     = serviceSelect.value;
-      const dateStr    = visitDateInput.value;
-      const slot       = selectedSlotInput.value;
+      if (!name||!phone||svcIdx===""||!date){ alert("Please fill in all the details."); return; }
+      if (!/^[0-9]{10}$/.test(phone)){ alert("Enter a valid 10-digit mobile number."); return; }
+      if (!slot){ alert("Please select an available time slot."); return; }
+      if (getBooked(date).includes(slot)){ alert("That slot was just taken. Please choose another."); renderSlots(date); return; }
 
-      if (!fullName || !phone || svcIdx === "" || !dateStr) {
-        alert("Please fill in all the details."); return;
-      }
-      if (!/^[0-9]{10}$/.test(phone)) {
-        alert("Please enter a valid 10-digit mobile number."); return;
-      }
-      if (!slot) {
-        alert("Please select an available time slot."); return;
-      }
+      const service  = SERVICES[parseInt(svcIdx)].label;
+      const bookingNo= genBookingNo(date);
+      const niceDate = fmtDate(date);
 
-      const booked = getBookedSlotsForDate(dateStr);
-      if (booked.includes(slot)) {
-        alert("That slot was just taken. Please choose another.");
-        renderSlots(dateStr); return;
-      }
+      addBooking(date, slot, {bookingNo,name,phone,service,date,slot,createdAt:new Date().toISOString()});
 
-      const service    = SERVICES[parseInt(svcIdx, 10)].label;
-      const bookingNo  = generateBookingNumber(dateStr);
+      $("confBookingNo").textContent = bookingNo;
+      $("confDate").textContent      = niceDate;
+      $("confSlot").textContent      = slot;
+      $("confService").textContent   = service;
 
-      addBooking(dateStr, slot, { bookingNo, fullName, phone, service, dateStr, slot, createdAt: new Date().toISOString() });
+      const custMsg =
+        `Sai Ram Communications — Appointment Confirmed ✅\n\n` +
+        `Hello ${name},\nYour appointment is successfully booked.\n\n` +
+        `📋 Booking No: ${bookingNo}\n🛎️ Service: ${service}\n📅 Date: ${niceDate}\n🕔 Time: ${slot}\n\n` +
+        `📍 Sai Ram Communications, S Kolathur, Chennai\n⏰ Please arrive on time with your documents.\n📞 Queries: 90423 89819`;
 
-      confBookingNo.textContent = bookingNo;
-      confDate.textContent      = formatDateNice(dateStr);
-      confSlot.textContent      = slot;
-      confService.textContent   = service;
+      const ownerMsg =
+        `New Booking 🔔 — Sai Ram Communications\n\n` +
+        `📋 Booking No: ${bookingNo}\n👤 Customer: ${name}\n📞 Phone: ${phone}\n🛎️ Service: ${service}\n📅 Date: ${niceDate}\n🕔 Time: ${slot}`;
 
-      waCustomerLink.href = buildCustomerWA({ bookingNo, name: fullName, service, dateStr, slot });
-      waOwnerLink.href    = buildOwnerWA({ bookingNo, name: fullName, phone, service, dateStr, slot });
+      waCustomerLink.href = waLink(`91${phone}`, custMsg);
+      waOwnerLink.href    = waLink("919042389819", ownerMsg);
 
       bookingForm.hidden = true;
       confirmCard.hidden = false;
-      confirmCard.scrollIntoView({ behavior: "smooth", block: "center" });
-
+      confirmCard.scrollIntoView({behavior:"smooth",block:"center"});
       window.open(waCustomerLink.href, "_blank");
     });
   }
 
-  /* ── NEW BOOKING ────────────────────────────────────── */
   if (newBookingBtn) {
-    newBookingBtn.addEventListener("click", () => {
-      bookingForm.reset();
-      bookingForm.hidden = false;
-      confirmCard.hidden = true;
-      docPanel.hidden = true;
-      const todayStr = new Date().toISOString().split("T")[0];
-      visitDateInput.value = todayStr;
-      renderSlots(todayStr);
-      bookingForm.scrollIntoView({ behavior: "smooth", block: "center" });
+    newBookingBtn.addEventListener("click", ()=>{
+      bookingForm.reset(); bookingForm.hidden=false; confirmCard.hidden=true; docPanel.hidden=true;
+      const today=new Date().toISOString().split("T")[0]; visitDateInput.value=today; renderSlots(today);
+      bookingForm.scrollIntoView({behavior:"smooth",block:"center"});
     });
   }
 
-  /* ── MOBILE NAV ─────────────────────────────────────── */
-  if (navToggle && mainNav) {
-    navToggle.addEventListener("click", () => mainNav.classList.toggle("open"));
-    mainNav.querySelectorAll("a").forEach(a => a.addEventListener("click", () => mainNav.classList.remove("open")));
+  /* ══ FILE UPLOAD LOGIC ══════════════════════════════════ */
+  let selectedFiles = [];   // array of File objects
+
+  function totalSize(){ return selectedFiles.reduce((s,f)=>s+f.size, 0); }
+
+  function fileIcon(type){
+    if(type==="application/pdf") return "📄";
+    if(type.startsWith("image/")) return "🖼️";
+    return "📎";
   }
 
-  document.getElementById("year").textContent = new Date().getFullYear();
+  function renderFileList(){
+    fileList.innerHTML = "";
+    selectedFiles.forEach((file, idx)=>{
+      const chip = document.createElement("div"); chip.className="file-chip";
+      chip.innerHTML=`
+        <span class="file-chip-icon">${fileIcon(file.type)}</span>
+        <div class="file-chip-info">
+          <span class="file-chip-name">${file.name}</span>
+          <span class="file-chip-size">${fmtBytes(file.size)}</span>
+        </div>
+        <button type="button" class="file-chip-remove" data-idx="${idx}" title="Remove">✕</button>`;
+      fileList.appendChild(chip);
+    });
+    fileList.querySelectorAll(".file-chip-remove").forEach(btn=>{
+      btn.addEventListener("click", ()=>{ selectedFiles.splice(parseInt(btn.dataset.idx),1); renderFileList(); updateTotal(); });
+    });
+    updateTotal();
+  }
+
+  function updateTotal(){
+    const total = totalSize();
+    if (!selectedFiles.length){ uploadTotal.textContent=""; return; }
+    const pct = Math.min(100, Math.round(total/MAX_UPLOAD_BYTES*100));
+    uploadTotal.textContent = `Total: ${fmtBytes(total)} / 20 MB (${pct}%)`;
+    uploadTotal.classList.toggle("over-limit", total > MAX_UPLOAD_BYTES);
+  }
+
+  function addFiles(newFiles){
+    for (const file of newFiles){
+      if (!ALLOWED_EXT.test(file.name) && !ALLOWED_TYPES.includes(file.type)){
+        alert(`"${file.name}" is not allowed. Please upload PDF, JPEG or PNG files only.`); continue;
+      }
+      if (totalSize() + file.size > MAX_UPLOAD_BYTES){
+        alert(`Adding "${file.name}" would exceed the 20 MB limit. Please remove a file first.`); break;
+      }
+      // avoid duplicates
+      if (!selectedFiles.find(f=>f.name===file.name && f.size===file.size)) selectedFiles.push(file);
+    }
+    renderFileList();
+  }
+
+  // Click to browse
+  if(uploadZone){
+    uploadZone.addEventListener("click", ()=>fileInput.click());
+    uploadZone.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===" ") fileInput.click(); });
+  }
+  if(fileInput) fileInput.addEventListener("change", ()=>{ addFiles(Array.from(fileInput.files)); fileInput.value=""; });
+
+  // Drag and drop
+  if(uploadZone){
+    uploadZone.addEventListener("dragover",  e=>{ e.preventDefault(); uploadZone.classList.add("drag-over"); });
+    uploadZone.addEventListener("dragleave", ()=>uploadZone.classList.remove("drag-over"));
+    uploadZone.addEventListener("drop", e=>{
+      e.preventDefault(); uploadZone.classList.remove("drag-over");
+      addFiles(Array.from(e.dataTransfer.files));
+    });
+  }
+
+  /* ══ ONLINE FORM SUBMIT ═════════════════════════════════
+     Files are sent to FormSubmit.co which emails them to
+     SSRC7010@gmail.com as attachments.
+     NOTE: The very first submission triggers a one-time
+     verification email to SSRC7010@gmail.com — click the
+     Verify button in that email, then all future submissions
+     deliver instantly.
+  ════════════════════════════════════════════════════════ */
+  if (onlineForm) {
+    onlineForm.addEventListener("submit", async function(e){
+      e.preventDefault();
+
+      const name    = $("ol-name").value.trim();
+      const phone   = $("ol-phone").value.trim();
+      const email   = $("ol-email").value.trim();
+      const svcIdx  = olService.value;
+      const notes   = $("ol-notes").value.trim();
+
+      if (!name||!phone||!email||svcIdx===""){
+        alert("Please fill in all required fields."); return;
+      }
+      if (!/^[0-9]{10}$/.test(phone)){
+        alert("Enter a valid 10-digit mobile number."); return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+        alert("Enter a valid email address."); return;
+      }
+      if (!selectedFiles.length){
+        alert("Please upload at least one document before submitting."); return;
+      }
+      if (totalSize() > MAX_UPLOAD_BYTES){
+        alert("Total file size exceeds 20 MB. Please remove some files."); return;
+      }
+
+      const service = SERVICES[parseInt(svcIdx)].label;
+
+      // Build FormData for FormSubmit.co
+      const fd = new FormData();
+      fd.append("name",    name);
+      fd.append("phone",   phone);
+      fd.append("email",   email);
+      fd.append("service", service);
+      fd.append("notes",   notes || "—");
+      fd.append("_subject", `Online Application: ${service} — ${name}`);
+      fd.append("_template", "table");
+      fd.append("_captcha",  "false");
+      fd.append("_autoresponse",
+        `Hello ${name}, we have received your online application for "${service}" at Sai Ram Communications. ` +
+        `We will review your documents and contact you on ${phone} within 24 hours. ` +
+        `For urgent queries, call or WhatsApp us at 90423 89819.`
+      );
+
+      // Attach each file
+      selectedFiles.forEach(file => fd.append("documents", file, file.name));
+
+      // Disable button and show loading state
+      onlineSubmitBtn.disabled = true;
+      onlineSubmitBtn.textContent = "Sending… please wait";
+
+      try {
+        const res = await fetch("https://formsubmit.co/ajax/SSRC7010@gmail.com", {
+          method:  "POST",
+          headers: { "Accept": "application/json" },
+          body:    fd
+        });
+
+        const result = await res.json();
+
+        if (res.ok && result.success === "true") {
+          // Show success
+          $("ol-conf-name").textContent    = name;
+          $("ol-conf-service").textContent = service;
+          $("ol-conf-files").textContent   = `${selectedFiles.length} file${selectedFiles.length>1?"s":""}`;
+          $("ol-conf-phone").textContent   = phone;
+
+          onlineForm.hidden    = true;
+          onlineSuccess.hidden = false;
+          onlineSuccess.scrollIntoView({behavior:"smooth",block:"center"});
+        } else {
+          alert("Submission failed: " + (result.message || "Unknown error. Please try again or contact us on WhatsApp."));
+          onlineSubmitBtn.disabled = false;
+          onlineSubmitBtn.textContent = "Submit Application";
+        }
+      } catch(err) {
+        alert("Could not connect. Please check your internet connection and try again, or contact us directly on WhatsApp at 90423 89819.");
+        onlineSubmitBtn.disabled = false;
+        onlineSubmitBtn.textContent = "Submit Application";
+      }
+    });
+  }
+
+  if (onlineResetBtn) {
+    onlineResetBtn.addEventListener("click", ()=>{
+      onlineForm.reset(); selectedFiles=[]; renderFileList();
+      onlineForm.hidden=false; onlineSuccess.hidden=true; docPanelOnline.hidden=true;
+      onlineSubmitBtn.disabled=false; onlineSubmitBtn.textContent="Submit Application";
+      onlineForm.scrollIntoView({behavior:"smooth",block:"center"});
+    });
+  }
+
+  /* ══ MOBILE NAV ═════════════════════════════════════════ */
+  if(navToggle&&mainNav){
+    navToggle.addEventListener("click",()=>mainNav.classList.toggle("open"));
+    mainNav.querySelectorAll("a").forEach(a=>a.addEventListener("click",()=>mainNav.classList.remove("open")));
+  }
+
+  $("year").textContent = new Date().getFullYear();
 
 })();
