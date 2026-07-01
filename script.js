@@ -16,120 +16,94 @@
        docs     : array of required document strings
      To add a new service later, just add another object.
   ──────────────────────────────────────────────────── */
+  /* ── SERVICES & DOCUMENTS ─────────────────────────────
+     To add a new service: add a new object with label + docs.
+     Use "|OR|" as a separator for "either/or" document options.
+  ──────────────────────────────────────────────────── */
   const SERVICES = [
-    {
-      label: "PAN Card – New Application",
-      docs: [
-        "Aadhaar Card (original + photocopy)",
-        "Passport-size photograph (2 copies)",
-        "Date of Birth proof (Birth certificate / 10th marksheet)",
-        "Mobile number linked to Aadhaar"
-      ]
-    },
-    {
-      label: "PAN Card – Correction / Reprint",
-      docs: [
-        "Existing PAN card copy",
-        "Aadhaar Card (original + photocopy)",
-        "Proof of correction (e.g. name change gazette)",
-        "Passport-size photograph (2 copies)"
-      ]
-    },
-    {
-      label: "Voter ID – New Registration",
-      docs: [
-        "Aadhaar Card (original + photocopy)",
-        "Passport-size photograph (2 copies)",
-        "Age proof (Birth certificate / 10th marksheet)",
-        "Address proof (Aadhaar / Electricity bill)"
-      ]
-    },
-    {
-      label: "Voter ID – Correction / Transfer",
-      docs: [
-        "Existing Voter ID card copy",
-        "Aadhaar Card (original + photocopy)",
-        "Address proof for transfer (Aadhaar / Utility bill)",
-        "Passport-size photograph (1 copy)"
-      ]
-    },
-    {
-      label: "GST – New Registration",
-      docs: [
-        "PAN Card of proprietor / partners",
-        "Aadhaar Card of proprietor",
-        "Business address proof (Electricity bill / Rent agreement)",
-        "Bank account details (cancelled cheque / passbook)",
-        "Passport-size photograph",
-        "Mobile & email (active)"
-      ]
-    },
-    {
-      label: "GST – Return Filing",
-      docs: [
-        "GST Registration number (GSTIN)",
-        "Sales invoices for the period",
-        "Purchase invoices for the period",
-        "Bank statement for the period"
-      ]
-    },
-    {
-      label: "Aadhaar – Update / Correction",
-      docs: [
-        "Existing Aadhaar card",
-        "Proof for field being corrected:",
-        "→ Name: Gazette notification / School certificate",
-        "→ Address: Electricity bill / Bank passbook",
-        "→ DOB: Birth certificate / 10th marksheet",
-        "Mobile number (for OTP)"
-      ]
-    },
-    {
-      label: "Income Certificate",
-      docs: [
-        "Aadhaar Card (original + photocopy)",
-        "Ration Card copy",
-        "Salary slip or income proof",
-        "Self-declaration letter",
-        "Passport-size photograph (2 copies)"
-      ]
-    },
     {
       label: "Community Certificate",
       docs: [
-        "Aadhaar Card (original + photocopy)",
-        "Ration Card copy",
-        "School Transfer Certificate (TC)",
-        "Father's community certificate (if available)",
-        "Passport-size photograph (2 copies)"
+        "Applicant Photo",
+        "Applicant Aadhaar Card",
+        "Parent's Transfer Certificate (TC)|OR|Parent's Community Certificate",
+        "Applicant Signature",
+        "Mobile Number"
       ]
     },
     {
       label: "Nativity Certificate",
       docs: [
-        "Aadhaar Card (original + photocopy)",
-        "Ration Card copy",
-        "School TC or Birth Certificate",
-        "Revenue / VAO recommendation letter",
-        "Passport-size photograph (2 copies)"
+        "Applicant Photo",
+        "Applicant Aadhaar Card",
+        "Applicant Birth Certificate",
+        "Smart Card (Family Card)",
+        "Applicant Signature",
+        "Mobile Number"
       ]
     },
     {
-      label: "Birth Certificate",
+      label: "Income Certificate",
       docs: [
-        "Hospital discharge summary",
-        "Parents' Aadhaar Card copies",
-        "Parents' marriage certificate",
-        "Ration Card copy"
+        "Applicant Photo",
+        "Applicant Aadhaar Card",
+        "Applicant's PAN Card|OR|Father's PAN Card",
+        "Smart Card (Family Card)",
+        "Applicant Signature",
+        "Mobile Number"
       ]
     },
     {
-      label: "Other Esevai Service",
+      label: "OBC Certificate",
       docs: [
-        "Aadhaar Card (original + photocopy)",
-        "Please bring all relevant original documents",
-        "Passport-size photographs (2 copies)",
-        "Contact us at 90423 89819 for specific document list"
+        "Applicant Photo",
+        "Applicant Aadhaar Card",
+        "Income Certificate",
+        "Community Certificate",
+        "Applicant Signature",
+        "Mobile Number"
+      ]
+    },
+    {
+      label: "New PAN Card",
+      docs: [
+        "Applicant Photo",
+        "Aadhaar Card",
+        "Birth Certificate"
+      ]
+    },
+    {
+      label: "PAN Card Correction",
+      docs: [
+        "Applicant Photo",
+        "Aadhaar Card",
+        "Birth Certificate|OR|Voter ID|OR|Driving Licence",
+        "Old PAN Card",
+        "Applicant Signature",
+        "Mobile Number"
+      ]
+    },
+    {
+      label: "New Voter ID",
+      docs: [
+        "Applicant Photo",
+        "Aadhaar Card"
+      ]
+    },
+    {
+      label: "Voter ID Correction",
+      docs: [
+        "Old Voter ID",
+        "Aadhaar Card|OR|Driving Licence|OR|PAN Card"
+      ]
+    },
+    {
+      label: "New Ration Card",
+      docs: [
+        "Family Head Photo",
+        "Aadhaar Cards of All Family Members",
+        "Current Gas Bill",
+        "Marriage Invitation|OR|Marriage Certificate"
       ]
     }
   ];
@@ -243,11 +217,25 @@
   });
 
   /* ── DOCUMENT PANEL ─────────────────────────────────── */
+  function renderDocItem(docStr) {
+    // If the doc string contains |OR|, split into alternatives
+    if (docStr.includes("|OR|")) {
+      const parts = docStr.split("|OR|");
+      const inner = parts.map((p, i) =>
+        i < parts.length - 1
+          ? `<span class="doc-option">${p.trim()}</span><span class="doc-or">or</span>`
+          : `<span class="doc-option">${p.trim()}</span>`
+      ).join("");
+      return `<li class="doc-item-or">${inner}</li>`;
+    }
+    return `<li>${docStr}</li>`;
+  }
+
   function showDocPanel(index) {
     const svc = SERVICES[index];
     if (!svc) { docPanel.hidden = true; return; }
     docServiceName.textContent = svc.label;
-    docList.innerHTML = svc.docs.map(d => `<li>${d}</li>`).join("");
+    docList.innerHTML = svc.docs.map(renderDocItem).join("");
     docPanel.hidden = false;
   }
 
