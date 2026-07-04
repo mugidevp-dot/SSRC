@@ -294,6 +294,34 @@ section{padding:90px 0}
 .upload-total.over-limit{color:#c0392b}
 
 /* ══════════════════════════════════════════
+   GOOGLE REVIEWS
+══════════════════════════════════════════ */
+.reviews{background:var(--white)}
+.reviews-head{display:flex;align-items:flex-end;justify-content:space-between;gap:32px;flex-wrap:wrap;margin-bottom:40px}
+.reviews-head .section-sub{margin-bottom:0}
+.reviews-badge{background:var(--cream);border:1px solid var(--line);border-radius:var(--radius);padding:20px 24px;text-align:center;min-width:200px;flex-shrink:0}
+.reviews-badge-stars{color:var(--gold);font-size:1.1rem;letter-spacing:2px;margin-bottom:6px}
+.reviews-badge-text{font-size:.88rem;color:var(--text-muted);margin-bottom:14px}
+.reviews-badge-text strong{color:var(--ink);font-size:1.15rem;font-family:var(--font-display)}
+.reviews-badge-text span{color:var(--green)}
+.reviews-badge-btn{width:100%;padding:10px 18px;font-size:.85rem}
+.reviews-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.review-card{background:var(--white);border:1px solid var(--line);border-radius:var(--radius);padding:26px 24px;transition:transform .3s ease,box-shadow .3s ease,border-color .3s ease;display:flex;flex-direction:column;gap:12px}
+.review-card:hover{transform:translateY(-6px);box-shadow:0 24px 48px -18px rgba(13,59,36,.2);border-color:var(--gold)}
+.review-top{display:flex;align-items:center;gap:12px;position:relative}
+.review-avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--white);font-weight:700;font-family:var(--font-display);font-size:1rem;flex-shrink:0}
+.avatar-c1{background:#146c43}.avatar-c2{background:#1a73e8}.avatar-c3{background:#c2255c}
+.avatar-c4{background:#7c3aed}.avatar-c5{background:#d4634e}.avatar-c6{background:#0d9488}
+.review-who{display:flex;flex-direction:column;line-height:1.25;min-width:0}
+.review-who strong{font-size:.92rem;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.review-who span{font-size:.76rem;color:var(--text-muted)}
+.review-google-icon{margin-left:auto;width:22px;height:22px;border-radius:50%;background:var(--cream);border:1px solid var(--line);color:var(--text-muted);font-size:.7rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.review-stars{color:var(--gold);font-size:.95rem;letter-spacing:2px}
+.review-text{font-size:.9rem;color:var(--ink-soft);line-height:1.65;flex-grow:1}
+.review-time{font-size:.76rem;color:var(--text-muted)}
+.reviews-more-wrap{display:flex;justify-content:center;margin-top:36px}
+
+/* ══════════════════════════════════════════
    CONTACT & FOOTER
 ══════════════════════════════════════════ */
 .contact{background:var(--yellow-soft)}
@@ -321,6 +349,9 @@ section{padding:90px 0}
 @media(max-width:900px){
   .hero-inner,.how-inner{grid-template-columns:1fr}
   .services-grid{grid-template-columns:repeat(2,1fr)}
+  .reviews-grid{grid-template-columns:repeat(2,1fr)}
+  .reviews-head{align-items:flex-start}
+  .reviews-badge{width:100%}
   .main-nav{display:none}.nav-cta{display:none}.nav-toggle{display:flex}
   .form-grid{grid-template-columns:1fr}
   .how-two-col{grid-template-columns:1fr}
@@ -328,6 +359,7 @@ section{padding:90px 0}
 }
 @media(max-width:600px){
   .services-grid{grid-template-columns:1fr}
+  .reviews-grid{grid-template-columns:1fr}
   .slot-btn-row{grid-template-columns:repeat(3,1fr)}
   .confirm-grid{grid-template-columns:1fr}
   .booking-box{padding:22px 16px}.contact-card{padding:28px 18px}
