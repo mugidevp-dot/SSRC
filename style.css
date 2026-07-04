@@ -330,3 +330,111 @@ section{padding:90px 0}
   section{padding:60px 0}
   .booking-tabs{width:100%}.btab{flex:1;justify-content:center;padding:11px 10px;font-size:.8rem}
 }
+
+/* ══════════════════════════════════════════
+   PAGE LOAD PROGRESS BAR
+══════════════════════════════════════════ */
+.page-load-bar{position:fixed;top:0;left:0;height:3px;width:0%;z-index:9999;background:linear-gradient(90deg,var(--gold),var(--gold-light),var(--green-light));background-size:200% 100%;box-shadow:0 0 12px rgba(212,169,60,.6);transition:width .5s ease,opacity .5s ease;animation:loadBarShimmer 1.4s linear infinite}
+.page-load-bar.done{opacity:0}
+@keyframes loadBarShimmer{0%{background-position:0% 0}100%{background-position:200% 0}}
+
+/* ══════════════════════════════════════════
+   SCROLL-TRIGGERED REVEAL SYSTEM (anim-*)
+   Base states start hidden; JS adds .visible
+   when the element enters the viewport (or,
+   for hero elements, shortly after page load).
+══════════════════════════════════════════ */
+.anim-up,.anim-slide-up,.anim-left,.anim-right,.anim-slide-right,.anim-scale{
+  opacity:0;will-change:transform,opacity;
+  transition:opacity .75s cubic-bezier(.16,.84,.44,1) var(--d,0s),transform .75s cubic-bezier(.16,.84,.44,1) var(--d,0s);
+}
+.anim-up,.anim-slide-up{transform:translateY(36px)}
+.anim-left{transform:translateX(-46px)}
+.anim-right,.anim-slide-right{transform:translateX(46px)}
+.anim-scale{transform:scale(.90)}
+.anim-up.visible,.anim-slide-up.visible,.anim-left.visible,.anim-right.visible,.anim-slide-right.visible,.anim-scale.visible{
+  opacity:1;transform:none;
+}
+.d1{--d:0.08s}.d2{--d:0.16s}.d3{--d:0.24s}.d4{--d:0.32s}.d5{--d:0.4s}
+
+/* ══════════════════════════════════════════
+   HERO — BLOBS, PATTERN, SCROLL HINT
+══════════════════════════════════════════ */
+.hero-blobs{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
+.blob{position:absolute;border-radius:50%;filter:blur(70px);opacity:.4;animation:blobDrift 15s ease-in-out infinite}
+.blob-1{width:380px;height:380px;top:-120px;left:-90px;background:radial-gradient(circle,var(--gold-light),transparent 70%);animation-duration:16s}
+.blob-2{width:320px;height:320px;bottom:-110px;right:6%;background:radial-gradient(circle,var(--green-light),transparent 70%);animation-duration:19s;animation-delay:2s}
+.blob-3{width:240px;height:240px;top:28%;right:-70px;background:radial-gradient(circle,rgba(255,255,255,.3),transparent 70%);animation-duration:13s;animation-delay:4s}
+@keyframes blobDrift{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(34px,-36px) scale(1.12)}66%{transform:translate(-24px,26px) scale(.92)}}
+.hero-bg-pattern{position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.07) 1px,transparent 1px);background-size:26px 26px;opacity:.55;animation:patternPan 34s linear infinite;pointer-events:none;z-index:0}
+@keyframes patternPan{from{background-position:0 0}to{background-position:260px 260px}}
+.hero-scroll-hint{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;color:rgba(255,255,255,.55);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;z-index:1;animation:fadeInUp 1s .9s both}
+.scroll-arrow{width:18px;height:28px;border:2px solid rgba(255,255,255,.4);border-radius:12px;position:relative}
+.scroll-arrow::before{content:"";position:absolute;top:5px;left:50%;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--gold-light);animation:scrollDot 1.8s ease infinite}
+@keyframes scrollDot{0%{transform:translateY(0);opacity:1}70%{opacity:0}100%{transform:translateY(12px);opacity:0}}
+
+/* Hero card gentle 3D tilt driven by JS (mousemove sets --rx/--ry) */
+.hero-card-inner{transform:perspective(900px) rotateX(var(--ry,0deg)) rotateY(var(--rx,0deg));transition:transform .25s ease}
+
+/* ══════════════════════════════════════════
+   HEADER SCROLL BEHAVIOR
+══════════════════════════════════════════ */
+.site-header{transition:transform .35s ease,box-shadow .3s ease}
+.site-header.hide-on-scroll{transform:translateY(-100%)}
+
+/* ══════════════════════════════════════════
+   BUTTON RIPPLE + MAGNETIC HOVER
+══════════════════════════════════════════ */
+.btn{position:relative;overflow:hidden}
+.btn-ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.5);transform:scale(0);animation:rippleAnim .6s ease-out forwards;pointer-events:none}
+@keyframes rippleAnim{to{transform:scale(2.6);opacity:0}}
+
+/* ══════════════════════════════════════════
+   ANIMATED SVG CHECKMARK (confirm cards)
+══════════════════════════════════════════ */
+.confirm-icon{background:none;box-shadow:none;width:64px;height:64px}
+.check-svg{width:64px;height:64px;overflow:visible}
+.check-circle{stroke:var(--green-light);stroke-width:3;stroke-dasharray:151;stroke-dashoffset:151;animation:drawCircle .6s ease forwards}
+.check-mark{stroke:var(--gold-light);stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:36;stroke-dashoffset:36;animation:drawCheck .4s .55s ease forwards}
+@keyframes drawCircle{to{stroke-dashoffset:0}}
+@keyframes drawCheck{to{stroke-dashoffset:0}}
+
+/* ══════════════════════════════════════════
+   SLOT BUTTON SELECT POP
+══════════════════════════════════════════ */
+@keyframes slotPop{0%{transform:scale(1)}45%{transform:scale(1.12)}100%{transform:scale(1.06)}}
+.slot-btn.selected{animation:slotPop .32s ease}
+
+/* ══════════════════════════════════════════
+   FILE CHIP EXIT ANIMATION
+══════════════════════════════════════════ */
+.file-chip.removing{animation:chipOut .25s ease forwards}
+@keyframes chipOut{to{opacity:0;transform:translateX(16px) scale(.94);margin-bottom:-46px}}
+
+/* ══════════════════════════════════════════
+   TAB PANE TRANSITION
+══════════════════════════════════════════ */
+.tab-pane.tab-anim{animation:fadeInUp .38s ease}
+.btab{position:relative}
+.btab.active{animation:tabPop .3s ease}
+@keyframes tabPop{0%{transform:scale(.95)}100%{transform:scale(1)}}
+
+/* ══════════════════════════════════════════
+   BACK TO TOP BUTTON
+══════════════════════════════════════════ */
+.back-to-top{position:fixed;right:22px;bottom:22px;width:48px;height:48px;border-radius:50%;border:none;background:linear-gradient(135deg,var(--green-light),var(--green-deep));color:var(--white);font-size:1.2rem;cursor:pointer;box-shadow:0 12px 28px -10px rgba(13,59,36,.55);display:flex;align-items:center;justify-content:center;z-index:80;opacity:0;visibility:hidden;transform:translateY(16px) scale(.85);transition:opacity .3s ease,transform .3s ease,visibility .3s,box-shadow .25s ease}
+.back-to-top.show{opacity:1;visibility:visible;transform:translateY(0) scale(1)}
+.back-to-top:hover{transform:translateY(-4px) scale(1.06);box-shadow:0 18px 34px -10px rgba(13,59,36,.65)}
+.back-to-top:active{transform:scale(.94)}
+
+/* ══════════════════════════════════════════
+   COUNT-UP STAT POP (small emphasis on finish)
+══════════════════════════════════════════ */
+.stat strong{transition:transform .2s ease}
+.stat strong.count-done{animation:countPop .35s ease}
+@keyframes countPop{0%{transform:scale(1)}50%{transform:scale(1.18)}100%{transform:scale(1)}}
+
+/* Respect reduced motion preference */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
