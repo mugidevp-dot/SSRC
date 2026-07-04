@@ -168,6 +168,21 @@
   }
 
   /* ══════════════════════════════════════════════════════
+     GOOGLE REVIEWS — "Show more" toggle
+  ══════════════════════════════════════════════════════ */
+  const reviewsMoreBtn = $("reviewsMoreBtn");
+  if (reviewsMoreBtn) {
+    reviewsMoreBtn.addEventListener("click", () => {
+      const extras = document.querySelectorAll(".extra-review");
+      extras.forEach(card => {
+        card.hidden = false;
+        requestAnimationFrame(() => card.classList.add("visible"));
+      });
+      reviewsMoreBtn.hidden = true;
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════
      BUTTON RIPPLE EFFECT — applies to every .btn
   ══════════════════════════════════════════════════════ */
   document.addEventListener("click", (e) => {
