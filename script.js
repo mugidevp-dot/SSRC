@@ -137,6 +137,21 @@
   const statsEl = document.querySelector(".hero-stats");
   if (statsEl) heroObserver.observe(statsEl);
 
+  const statsSectionEl = document.querySelector(".stats-section");
+  if (statsSectionEl) {
+    const statsSectionObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          statsSectionEl.querySelectorAll("[data-count]").forEach(el => {
+            animateCount(el, parseInt(el.dataset.count, 10), 2000);
+          });
+          statsSectionObserver.disconnect();
+        }
+      });
+    }, { threshold: 0.4 });
+    statsSectionObserver.observe(statsSectionEl);
+  }
+
   /* ══════════════════════════════════════════════════════
      HEADER — shadow + hide-on-scroll-down
   ══════════════════════════════════════════════════════ */
@@ -168,19 +183,406 @@
   }
 
   /* ══════════════════════════════════════════════════════
-     GOOGLE REVIEWS — "Show more" toggle
+     GOOGLE REVIEWS — auto-swiping carousel
   ══════════════════════════════════════════════════════ */
-  const reviewsMoreBtn = $("reviewsMoreBtn");
-  if (reviewsMoreBtn) {
-    reviewsMoreBtn.addEventListener("click", () => {
-      const extras = document.querySelectorAll(".extra-review");
-      extras.forEach(card => {
-        card.hidden = false;
-        requestAnimationFrame(() => card.classList.add("visible"));
+  const rcTrack = $("rcTrack");
+  const rcViewport = $("rcViewport");
+  const rcDotsWrap = $("rcDots");
+  const rcPrev = $("rcPrev");
+  const rcNext = $("rcNext");
+
+  if (rcTrack && rcViewport) {
+    const rcSlides = Array.from(rcTrack.children);
+    let rcIndex = 0;
+    let rcPerView = window.innerWidth > 700 ? 3 : 1;
+    let rcTimer = null;
+    const RC_INTERVAL = 4000;
+
+    const rcMaxIndex = () => Math.max(0, rcSlides.length - rcPerView);
+
+    rcSlides.forEach((_, i) => {
+      const dot = document.createElement("button");
+      dot.type = "button";
+      dot.className = "rc-dot";
+      dot.setAttribute("aria-label", `Go to review ${i + 1}`);
+      dot.addEventListener("click", () => { rcGoTo(i > rcMaxIndex() ? rcMaxIndex() : i); rcRestart(); });
+      rcDotsWrap.appendChild(dot);
+    });
+
+    function rcUpdateDots() {
+      Array.from(rcDotsWrap.children).forEach((d, i) => d.classList.toggle("active", i === rcIndex));
+    }
+
+    function rcGoTo(i) {
+      rcIndex = Math.max(0, Math.min(i, rcMaxIndex()));
+      const slideWidth = rcTrack.children[0].getBoundingClientRect().width;
+      rcTrack.style.transform = `translateX(-${rcIndex * slideWidth}px)`;
+      rcUpdateDots();
+    }
+
+    function rcNextSlide() {
+      rcGoTo(rcIndex + 1 > rcMaxIndex() ? 0 : rcIndex + 1);
+    }
+
+    function rcStart() {
+      rcTimer = setInterval(rcNextSlide, RC_INTERVAL);
+    }
+    function rcStop() {
+      clearInterval(rcTimer);
+    }
+    function rcRestart() {
+      rcStop();
+      rcStart();
+    }
+
+    rcNext && rcNext.addEventListener("click", () => { rcNextSlide(); rcRestart(); });
+    rcPrev && rcPrev.addEventListener("click", () => {
+      rcGoTo(rcIndex - 1 < 0 ? rcMaxIndex() : rcIndex - 1);
+      rcRestart();
+    });
+
+    rcViewport.addEventListener("mouseenter", rcStop);
+    rcViewport.addEventListener("mouseleave", rcStart);
+
+    // Touch / mouse swipe support
+    let dragStartX = 0, isDragging = false, dragDelta = 0;
+    const dragThreshold = 40;
+
+    function dragStart(x) {
+      isDragging = true;
+      dragStartX = x;
+      dragDelta = 0;
+      rcStop();
+      rcTrack.style.transition = "none";
+    }
+    function dragMove(x) {
+      if (!isDragging) return;
+      dragDelta = x - dragStartX;
+      const slideWidth = rcTrack.children[0].getBoundingClientRect().width;
+      rcTrack.style.transform = `translateX(${-(rcIndex * slideWidth) + dragDelta}px)`;
+    }
+    function dragEnd() {
+      if (!isDragging) return;
+      isDragging = false;
+      rcTrack.style.transition = "";
+      if (dragDelta > dragThreshold) {
+        rcGoTo(rcIndex - 1 < 0 ? rcMaxIndex() : rcIndex - 1);
+      } else if (dragDelta < -dragThreshold) {
+        rcGoTo(rcIndex + 1 > rcMaxIndex() ? 0 : rcIndex + 1);
+      } else {
+        rcGoTo(rcIndex);
+      }
+      rcStart();
+    }
+
+    rcTrack.addEventListener("touchstart", e => dragStart(e.touches[0].clientX), { passive: true });
+    rcTrack.addEventListener("touchmove", e => dragMove(e.touches[0].clientX), { passive: true });
+    rcTrack.addEventListener("touchend", dragEnd);
+
+    rcTrack.addEventListener("mousedown", e => { e.preventDefault(); dragStart(e.clientX); });
+    window.addEventListener("mousemove", e => dragMove(e.clientX));
+    window.addEventListener("mouseup", dragEnd);
+
+    window.addEventListener("resize", () => {
+      rcPerView = window.innerWidth > 700 ? 3 : 1;
+      rcGoTo(Math.min(rcIndex, rcMaxIndex()));
+    });
+
+    rcGoTo(0);
+    rcStart();
+  }
+
+  /* ══════════════════════════════════════════════════════
+     ALL SERVICES — search + category filter
+  ══════════════════════════════════════════════════════ */
+  const asSearchInput = $("asSearchInput");
+  const asFilters = $("asFilters");
+  const asGrid = $("asGrid");
+  const asEmpty = $("asEmpty");
+
+  if (asGrid) {
+    const asCards = Array.from(asGrid.children);
+    let asActiveCat = "all";
+
+    function asApplyFilters() {
+      const term = (asSearchInput.value || "").trim().toLowerCase();
+      let visibleCount = 0;
+      asCards.forEach(card => {
+        const matchesCat = asActiveCat === "all" || card.dataset.cat === asActiveCat;
+        const matchesTerm = !term || card.dataset.name.toLowerCase().includes(term);
+        const show = matchesCat && matchesTerm;
+        card.hidden = !show;
+        if (show) visibleCount++;
       });
-      reviewsMoreBtn.hidden = true;
+      asEmpty.hidden = visibleCount > 0;
+    }
+
+    asSearchInput.addEventListener("input", asApplyFilters);
+
+    asFilters.querySelectorAll(".as-filter").forEach(btn => {
+      btn.addEventListener("click", () => {
+        asFilters.querySelectorAll(".as-filter").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        asActiveCat = btn.dataset.cat;
+        asApplyFilters();
+      });
     });
   }
+
+  /* ══════════════════════════════════════════════════════
+     FAQ ACCORDION
+  ══════════════════════════════════════════════════════ */
+  document.querySelectorAll(".faq-item").forEach(item => {
+    const q = item.querySelector(".faq-q");
+    q.addEventListener("click", () => {
+      const wasOpen = item.classList.contains("open");
+      document.querySelectorAll(".faq-item.open").forEach(el => {
+        el.classList.remove("open");
+        el.querySelector(".faq-toggle").textContent = "+";
+      });
+      if (!wasOpen) {
+        item.classList.add("open");
+        item.querySelector(".faq-toggle").textContent = "×";
+      }
+    });
+  });
+
+  /* ══════════════════════════════════════════════════════
+     FREE ONLINE TOOLS — modal calculators
+  ══════════════════════════════════════════════════════ */
+  const toolOverlay = $("toolOverlay");
+  const toolModal = $("toolModal");
+  const toolTitle = $("toolTitle");
+  const toolBody = $("toolBody");
+  const toolClose = $("toolClose");
+
+  function openTool(title, html) {
+    toolTitle.textContent = title;
+    toolBody.innerHTML = html;
+    toolOverlay.classList.add("open");
+  }
+  function closeTool() {
+    toolOverlay.classList.remove("open");
+  }
+  toolClose && toolClose.addEventListener("click", closeTool);
+  toolOverlay && toolOverlay.addEventListener("click", e => { if (e.target === toolOverlay) closeTool(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && toolOverlay && toolOverlay.classList.contains("open")) closeTool(); });
+
+  const toolDefinitions = {
+    age: {
+      title: "Age Calculator",
+      html: `<div class="tool-field"><label>Date of Birth</label><input type="date" id="tAgeDob"></div>
+             <button type="button" class="btn btn-primary btn-block" id="tAgeCalc">Calculate</button>
+             <div class="tool-result" id="tAgeResult" hidden></div>`,
+      bind() {
+        $("tAgeCalc").addEventListener("click", () => {
+          const dob = new Date($("tAgeDob").value);
+          if (isNaN(dob)) return;
+          const now = new Date();
+          let years = now.getFullYear() - dob.getFullYear();
+          let months = now.getMonth() - dob.getMonth();
+          let days = now.getDate() - dob.getDate();
+          if (days < 0) { months--; days += new Date(now.getFullYear(), now.getMonth(), 0).getDate(); }
+          if (months < 0) { years--; months += 12; }
+          const res = $("tAgeResult");
+          res.hidden = false;
+          res.innerHTML = `Your age is <strong>${years} years, ${months} months, ${days} days</strong>`;
+        });
+      }
+    },
+    bmi: {
+      title: "BMI Calculator",
+      html: `<div class="tool-field"><label>Weight (kg)</label><input type="number" id="tBmiW" placeholder="e.g. 65"></div>
+             <div class="tool-field"><label>Height (cm)</label><input type="number" id="tBmiH" placeholder="e.g. 170"></div>
+             <button type="button" class="btn btn-primary btn-block" id="tBmiCalc">Calculate</button>
+             <div class="tool-result" id="tBmiResult" hidden></div>`,
+      bind() {
+        $("tBmiCalc").addEventListener("click", () => {
+          const w = parseFloat($("tBmiW").value), h = parseFloat($("tBmiH").value) / 100;
+          if (!w || !h) return;
+          const bmi = (w / (h * h)).toFixed(1);
+          let cat = "Normal";
+          if (bmi < 18.5) cat = "Underweight"; else if (bmi >= 25 && bmi < 30) cat = "Overweight"; else if (bmi >= 30) cat = "Obese";
+          const res = $("tBmiResult");
+          res.hidden = false;
+          res.innerHTML = `Your BMI is <strong>${bmi}</strong> (${cat})`;
+        });
+      }
+    },
+    percentage: {
+      title: "Percentage Calculator",
+      html: `<div class="tool-field"><label>Value</label><input type="number" id="tPctVal" placeholder="e.g. 40"></div>
+             <div class="tool-field"><label>Of Total</label><input type="number" id="tPctTotal" placeholder="e.g. 200"></div>
+             <button type="button" class="btn btn-primary btn-block" id="tPctCalc">Calculate</button>
+             <div class="tool-result" id="tPctResult" hidden></div>`,
+      bind() {
+        $("tPctCalc").addEventListener("click", () => {
+          const v = parseFloat($("tPctVal").value), t = parseFloat($("tPctTotal").value);
+          if (!v || !t) return;
+          const res = $("tPctResult");
+          res.hidden = false;
+          res.innerHTML = `<strong>${v}</strong> is <strong>${((v / t) * 100).toFixed(2)}%</strong> of ${t}`;
+        });
+      }
+    },
+    emi: {
+      title: "EMI Calculator",
+      html: `<div class="tool-field"><label>Loan Amount (₹)</label><input type="number" id="tEmiP" placeholder="e.g. 500000"></div>
+             <div class="tool-field"><label>Interest Rate (% per year)</label><input type="number" id="tEmiR" placeholder="e.g. 9"></div>
+             <div class="tool-field"><label>Tenure (months)</label><input type="number" id="tEmiN" placeholder="e.g. 36"></div>
+             <button type="button" class="btn btn-primary btn-block" id="tEmiCalc">Calculate</button>
+             <div class="tool-result" id="tEmiResult" hidden></div>`,
+      bind() {
+        $("tEmiCalc").addEventListener("click", () => {
+          const p = parseFloat($("tEmiP").value), annualR = parseFloat($("tEmiR").value), n = parseFloat($("tEmiN").value);
+          if (!p || !annualR || !n) return;
+          const r = annualR / 12 / 100;
+          const emi = (p * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+          const res = $("tEmiResult");
+          res.hidden = false;
+          res.innerHTML = `Monthly EMI: <strong>₹${emi.toFixed(0)}</strong><br>Total Payment: <strong>₹${(emi * n).toFixed(0)}</strong>`;
+        });
+      }
+    },
+    loan: {
+      title: "Loan Calculator",
+      html: `<div class="tool-field"><label>Loan Amount (₹)</label><input type="number" id="tLoanP" placeholder="e.g. 200000"></div>
+             <div class="tool-field"><label>Interest Rate (% per year)</label><input type="number" id="tLoanR" placeholder="e.g. 10"></div>
+             <div class="tool-field"><label>Tenure (years)</label><input type="number" id="tLoanY" placeholder="e.g. 3"></div>
+             <button type="button" class="btn btn-primary btn-block" id="tLoanCalc">Calculate</button>
+             <div class="tool-result" id="tLoanResult" hidden></div>`,
+      bind() {
+        $("tLoanCalc").addEventListener("click", () => {
+          const p = parseFloat($("tLoanP").value), annualR = parseFloat($("tLoanR").value), y = parseFloat($("tLoanY").value);
+          if (!p || !annualR || !y) return;
+          const n = y * 12, r = annualR / 12 / 100;
+          const emi = (p * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1);
+          const res = $("tLoanResult");
+          res.hidden = false;
+          res.innerHTML = `Monthly EMI: <strong>₹${emi.toFixed(0)}</strong><br>Total Interest: <strong>₹${(emi * n - p).toFixed(0)}</strong>`;
+        });
+      }
+    },
+    sip: {
+      title: "SIP Calculator",
+      html: `<div class="tool-field"><label>Monthly Investment (₹)</label><input type="number" id="tSipM" placeholder="e.g. 5000"></div>
+             <div class="tool-field"><label>Expected Return (% per year)</label><input type="number" id="tSipR" placeholder="e.g. 12"></div>
+             <div class="tool-field"><label>Duration (years)</label><input type="number" id="tSipY" placeholder="e.g. 10"></div>
+             <button type="button" class="btn btn-primary btn-block" id="tSipCalc">Calculate</button>
+             <div class="tool-result" id="tSipResult" hidden></div>`,
+      bind() {
+        $("tSipCalc").addEventListener("click", () => {
+          const m = parseFloat($("tSipM").value), annualR = parseFloat($("tSipR").value), y = parseFloat($("tSipY").value);
+          if (!m || !annualR || !y) return;
+          const n = y * 12, r = annualR / 12 / 100;
+          const future = m * ((Math.pow(1 + r, n) - 1) / r) * (1 + r);
+          const invested = m * n;
+          const res = $("tSipResult");
+          res.hidden = false;
+          res.innerHTML = `Invested: <strong>₹${invested.toFixed(0)}</strong><br>Est. Returns: <strong>₹${(future - invested).toFixed(0)}</strong><br>Maturity Value: <strong>₹${future.toFixed(0)}</strong>`;
+        });
+      }
+    },
+    gst: {
+      title: "GST Calculator",
+      html: `<div class="tool-field"><label>Amount (₹)</label><input type="number" id="tGstAmt" placeholder="e.g. 1000"></div>
+             <div class="tool-field"><label>GST Rate (%)</label>
+             <select id="tGstRate"><option value="5">5%</option><option value="12">12%</option><option value="18" selected>18%</option><option value="28">28%</option></select></div>
+             <button type="button" class="btn btn-primary btn-block" id="tGstCalc">Calculate</button>
+             <div class="tool-result" id="tGstResult" hidden></div>`,
+      bind() {
+        $("tGstCalc").addEventListener("click", () => {
+          const amt = parseFloat($("tGstAmt").value), rate = parseFloat($("tGstRate").value);
+          if (!amt) return;
+          const gst = amt * (rate / 100);
+          const res = $("tGstResult");
+          res.hidden = false;
+          res.innerHTML = `GST Amount: <strong>₹${gst.toFixed(2)}</strong><br>Total (incl. GST): <strong>₹${(amt + gst).toFixed(2)}</strong>`;
+        });
+      }
+    },
+    unit: {
+      title: "Unit Converter (Length)",
+      html: `<div class="tool-field"><label>Value</label><input type="number" id="tUnitVal" placeholder="e.g. 10"></div>
+             <div class="tool-field"><label>From</label>
+             <select id="tUnitFrom"><option value="m">Meters</option><option value="km">Kilometers</option><option value="ft">Feet</option><option value="mi">Miles</option></select></div>
+             <div class="tool-field"><label>To</label>
+             <select id="tUnitTo"><option value="km">Kilometers</option><option value="m">Meters</option><option value="ft">Feet</option><option value="mi">Miles</option></select></div>
+             <button type="button" class="btn btn-primary btn-block" id="tUnitCalc">Convert</button>
+             <div class="tool-result" id="tUnitResult" hidden></div>`,
+      bind() {
+        const toMeters = { m: 1, km: 1000, ft: 0.3048, mi: 1609.34 };
+        $("tUnitCalc").addEventListener("click", () => {
+          const v = parseFloat($("tUnitVal").value);
+          if (!v) return;
+          const from = $("tUnitFrom").value, to = $("tUnitTo").value;
+          const meters = v * toMeters[from];
+          const converted = meters / toMeters[to];
+          const res = $("tUnitResult");
+          res.hidden = false;
+          res.innerHTML = `${v} ${from} = <strong>${converted.toFixed(4)} ${to}</strong>`;
+        });
+      }
+    },
+    currency: {
+      title: "Currency Converter (INR base)",
+      html: `<p style="font-size:.8rem;color:var(--text-muted);margin-bottom:14px">Approximate rates — for reference only, not real-time.</p>
+             <div class="tool-field"><label>Amount in INR (₹)</label><input type="number" id="tCurAmt" placeholder="e.g. 1000"></div>
+             <div class="tool-field"><label>Convert To</label>
+             <select id="tCurTo"><option value="0.012">USD</option><option value="0.011">EUR</option><option value="0.0095">GBP</option><option value="1.78">JPY</option></select></div>
+             <button type="button" class="btn btn-primary btn-block" id="tCurCalc">Convert</button>
+             <div class="tool-result" id="tCurResult" hidden></div>`,
+      bind() {
+        $("tCurCalc").addEventListener("click", () => {
+          const amt = parseFloat($("tCurAmt").value), rate = parseFloat($("tCurTo").value);
+          if (!amt) return;
+          const label = $("tCurTo").selectedOptions[0].textContent;
+          const res = $("tCurResult");
+          res.hidden = false;
+          res.innerHTML = `≈ <strong>${(amt * rate).toFixed(2)} ${label}</strong>`;
+        });
+      }
+    },
+    qr: {
+      title: "QR Code Generator",
+      html: `<div class="tool-field"><label>Text or URL</label><input type="text" id="tQrText" placeholder="Enter text or link"></div>
+             <button type="button" class="btn btn-primary btn-block" id="tQrCalc">Generate</button>
+             <img id="tQrImg" class="tool-qr-img" hidden width="200" height="200" alt="Generated QR code">`,
+      bind() {
+        $("tQrCalc").addEventListener("click", () => {
+          const text = $("tQrText").value.trim();
+          if (!text) return;
+          const img = $("tQrImg");
+          img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(text)}`;
+          img.hidden = false;
+        });
+      }
+    },
+    barcode: {
+      title: "Barcode Generator",
+      html: `<div class="tool-field"><label>Text or Number</label><input type="text" id="tBcText" placeholder="Enter code"></div>
+             <button type="button" class="btn btn-primary btn-block" id="tBcCalc">Generate</button>
+             <img id="tBcImg" class="tool-qr-img" hidden alt="Generated barcode">`,
+      bind() {
+        $("tBcCalc").addEventListener("click", () => {
+          const text = $("tBcText").value.trim();
+          if (!text) return;
+          const img = $("tBcImg");
+          img.src = `https://barcode.tec-it.com/barcode.ashx?data=${encodeURIComponent(text)}&code=Code128`;
+          img.hidden = false;
+        });
+      }
+    }
+  };
+
+  document.querySelectorAll(".tool-card[data-tool]").forEach(card => {
+    card.addEventListener("click", () => {
+      const def = toolDefinitions[card.dataset.tool];
+      if (!def) return;
+      openTool(def.title, def.html);
+      def.bind();
+    });
+  });
 
   /* ══════════════════════════════════════════════════════
      BUTTON RIPPLE EFFECT — applies to every .btn
