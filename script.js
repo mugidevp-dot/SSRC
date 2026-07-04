@@ -19,7 +19,15 @@
     { label:"PAN Card Correction",   docs:["Applicant Photo","Aadhaar Card","Birth Certificate|OR|Voter ID|OR|Driving Licence","Old PAN Card","Applicant Signature","Mobile Number"] },
     { label:"New Voter ID",          docs:["Applicant Photo","Aadhaar Card"] },
     { label:"Voter ID Correction",   docs:["Old Voter ID","Aadhaar Card|OR|Driving Licence|OR|PAN Card"] },
-    { label:"New Ration Card",       docs:["Family Head Photo","Aadhaar Cards of All Family Members","Current Gas Bill","Marriage Invitation|OR|Marriage Certificate"] }
+    { label:"New Ration Card",       docs:["Family Head Photo","Aadhaar Cards of All Family Members","Current Gas Bill","Marriage Invitation|OR|Marriage Certificate"] },
+    { label:"EB Bill Payment",       docs:["EB Bill Copy|OR|Consumer Number","Mobile Number"] },
+    { label:"College Fees / Exam Fee Payments", docs:["Fee Payment Challan|OR|Receipt Details","Student ID|OR|Admit Card","Mobile Number"] },
+    { label:"TNPSC Exam Services",   docs:["Applicant Photo","Aadhaar Card","Educational Certificates","Mobile Number"] },
+    { label:"MSME Registration / Update", docs:["Aadhaar Card","PAN Card","Business Address Proof","Bank Passbook|OR|Cancelled Cheque","Mobile Number"] },
+    { label:"PVC Card / Plastic Card Printing", docs:["ID Card Photo|OR|Scanned Copy","Mobile Number"] },
+    { label:"Certificate Lamination", docs:["Certificate(s) to be Laminated"] },
+    { label:"Spiral Binding",        docs:["Documents to be Bound"] },
+    { label:"PF Services",           docs:["UAN Number|OR|PF Account Number","Aadhaar Card","Bank Passbook","Mobile Number"] }
   ];
 
   /* ── SLOTS ───────────────────────────────────────────── */
@@ -667,6 +675,12 @@
 
   if (logoutBtn) {
     logoutBtn.addEventListener("click", () => {
+      // Clear any auto-filled personal details before wiping the session,
+      // so the previous user's name/phone/email don't linger in the forms.
+      const fn = $("fullName"), ph = $("phone");
+      const on = $("ol-name"), op = $("ol-phone"), oe = $("ol-email");
+      [fn, ph, on, op, oe].forEach(el => { if (el) el.value = ""; });
+
       clearSession();
       updateAuthUI();
       showToast("You've been logged out.", "success", "👋");
