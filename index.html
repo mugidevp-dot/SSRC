@@ -30,6 +30,14 @@
       <a href="#booking">Book / Apply</a>
       <a href="#contact">Contact</a>
     </nav>
+    <div class="nav-auth">
+      <button id="loginNavBtn" class="btn btn-outline nav-login">👤 Login</button>
+      <div id="userChip" class="user-chip" hidden>
+        <span class="user-avatar" id="userAvatar">A</span>
+        <span class="user-name" id="userNameDisplay"></span>
+        <button id="logoutBtn" class="user-logout" title="Logout">⎋</button>
+      </div>
+    </div>
     <a href="#booking" class="btn btn-primary nav-cta">Get Started</a>
     <button class="nav-toggle" id="navToggle" aria-label="Toggle menu">
       <span></span><span></span><span></span>
@@ -120,7 +128,7 @@
           </ol>
         </div>
         <div class="how-option anim-left d4">
-          <div class="how-option-head">📤 Apply Online</div>
+          <div class="how-option-head">📤 Apply Online <span class="how-option-badge">Free account required</span></div>
           <ol class="how-steps">
             <li><span>1</span> Select service — see required documents</li>
             <li><span>2</span> Upload scanned copies (PDF / JPEG / PNG)</li>
@@ -160,7 +168,7 @@
 
     <div class="booking-tabs anim-up d3">
       <button class="btab active" data-tab="offline">📅 Book Offline Visit</button>
-      <button class="btab" data-tab="online">📤 Apply Online from Home</button>
+      <button class="btab" data-tab="online">📤 Apply Online from Home <span class="tab-lock" id="onlineTabLock">🔒</span></button>
     </div>
 
     <!-- ── OFFLINE TAB ── -->
@@ -229,7 +237,21 @@
 
     <!-- ── ONLINE TAB ── -->
     <div id="tabOnline" class="tab-pane" hidden>
-      <div class="booking-layout">
+
+      <!-- Shown when no user is logged in -->
+      <div id="onlineLocked" class="online-locked anim-up" hidden>
+        <div class="locked-icon">🔒</div>
+        <h3>Register or Login to Apply Online</h3>
+        <p>Create a free account (or log in if you already have one) to upload your documents and submit an application from home. It only takes a minute, and we'll remember your details for next time.</p>
+        <div class="locked-actions">
+          <button type="button" class="btn btn-primary" id="lockedRegisterBtn">📝 Create Free Account</button>
+          <button type="button" class="btn btn-outline" id="lockedLoginBtn">Already registered? Login</button>
+        </div>
+        <p class="locked-note">Prefer not to sign up? You can still <a href="#" id="lockedSwitchOffline">book an offline visit</a> without an account.</p>
+      </div>
+
+      <!-- Shown once the user is logged in -->
+      <div id="onlineContent" class="booking-layout" hidden>
         <div class="booking-box anim-up">
 
           <!--
@@ -338,13 +360,14 @@
       <span class="section-eyebrow">Get in touch</span>
       <h2 class="section-title">Visit or message us</h2>
       <ul class="contact-list">
-        <li class="anim-left d1"><span class="contact-icon">📍</span><div><strong>Address</strong><p>Sai Ram Communications, S Kolathur, Chennai</p></div></li>
+        <li class="anim-left d1"><span class="contact-icon">📍</span><div><strong>Address</strong><p><a href="https://maps.app.goo.gl/4U58xS4278tPp7Tt7" target="_blank" rel="noopener" class="map-link">Sai Ram Communications, S Kolathur, Chennai <span class="map-link-arrow">↗</span></a></p></div></li>
         <li class="anim-left d2"><span class="contact-icon">📞</span><div><strong>Phone / WhatsApp</strong><p><a href="tel:+919042389819">90423 89819</a></p></div></li>
         <li class="anim-left d3"><span class="contact-icon">✉️</span><div><strong>Email</strong><p><a href="mailto:SSRC7010@gmail.com">SSRC7010@gmail.com</a></p></div></li>
         <li class="anim-left d4"><span class="contact-icon">🕒</span><div><strong>Working Hours</strong><p>Mon–Fri: 5:00 PM – 10:00 PM</p><p>Sat–Sun: 10:00 AM – 2:00 PM &amp; 5:00 PM – 10:00 PM</p></div></li>
       </ul>
       <div class="contact-actions anim-up d5">
         <a href="https://wa.me/919042389819" target="_blank" rel="noopener" class="btn btn-whatsapp">Chat on WhatsApp</a>
+        <a href="https://maps.app.goo.gl/4U58xS4278tPp7Tt7" target="_blank" rel="noopener" class="btn btn-gold">📍 Get Directions</a>
         <a href="mailto:SSRC7010@gmail.com" class="btn btn-ghost">Send an Email</a>
       </div>
     </div>
@@ -366,6 +389,77 @@
 </footer>
 
 <button id="backToTop" class="back-to-top" aria-label="Back to top">↑</button>
+
+<!-- ═══ LOGIN / REGISTER MODAL ═══ -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-modal" id="authModal">
+    <button class="auth-close" id="authClose" aria-label="Close">✕</button>
+    <div class="auth-header">
+      <div class="brand-mark">SR</div>
+      <h2 id="authTitle">Welcome Back</h2>
+      <p id="authSubtitle">Login to manage your bookings and applications</p>
+    </div>
+    <div class="auth-tabs" id="authTabs">
+      <button type="button" class="atab active" data-atab="login">Login</button>
+      <button type="button" class="atab" data-atab="register">Register</button>
+    </div>
+    <div class="auth-forms" id="authForms">
+
+      <form id="loginForm" class="auth-form active" novalidate>
+        <div class="field">
+          <label for="li-identifier">Mobile Number or Email</label>
+          <input type="text" id="li-identifier" placeholder="Enter mobile number or email" required>
+        </div>
+        <div class="field">
+          <label for="li-password">Password</label>
+          <div class="password-wrap">
+            <input type="password" id="li-password" placeholder="Enter your password" required>
+            <button type="button" class="pw-toggle" data-target="li-password">👁️</button>
+          </div>
+        </div>
+        <p class="auth-error" id="loginError"></p>
+        <button type="submit" class="btn btn-primary btn-block" id="loginSubmitBtn">Login</button>
+        <p class="auth-switch">New here? <a href="#" data-switch="register">Create an account</a></p>
+      </form>
+
+      <form id="registerForm" class="auth-form" novalidate>
+        <div class="field">
+          <label for="re-name">Full Name</label>
+          <input type="text" id="re-name" placeholder="Enter your full name" required>
+        </div>
+        <div class="field">
+          <label for="re-phone">Mobile Number</label>
+          <input type="tel" id="re-phone" placeholder="10-digit mobile number" maxlength="10" required>
+        </div>
+        <div class="field">
+          <label for="re-email">Email Address</label>
+          <input type="email" id="re-email" placeholder="yourname@email.com" required>
+        </div>
+        <div class="field">
+          <label for="re-password">Create Password</label>
+          <div class="password-wrap">
+            <input type="password" id="re-password" placeholder="Minimum 6 characters" required minlength="6">
+            <button type="button" class="pw-toggle" data-target="re-password">👁️</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="re-confirm">Confirm Password</label>
+          <div class="password-wrap">
+            <input type="password" id="re-confirm" placeholder="Re-enter your password" required minlength="6">
+            <button type="button" class="pw-toggle" data-target="re-confirm">👁️</button>
+          </div>
+        </div>
+        <p class="auth-error" id="registerError"></p>
+        <button type="submit" class="btn btn-primary btn-block" id="registerSubmitBtn">Create Account</button>
+        <p class="auth-switch">Already have an account? <a href="#" data-switch="login">Login</a></p>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TOAST NOTIFICATIONS ═══ -->
+<div class="toast-stack" id="toastStack"></div>
 
 <script src="script.js"></script>
 </body>
