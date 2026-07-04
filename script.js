@@ -220,6 +220,7 @@
     paneOn.classList.remove("tab-anim");
     void paneOn.offsetWidth; // force reflow so the animation replays
     paneOn.classList.add("tab-anim");
+    if (which === "online") updateOnlineAccess();
   }
   document.querySelectorAll(".btab").forEach(btn => btn.addEventListener("click", () => switchTab(btn.dataset.tab)));
 
@@ -529,6 +530,8 @@
     onlineForm.addEventListener("submit", function(e) {
       e.preventDefault();   // validate first, then submit manually
 
+      if (!getSession()) { alert("Please login or register first to apply online."); return; }
+
       const name   = $("ol-name").value.trim();
       const phone  = $("ol-phone").value.trim();
       const email  = $("ol-email").value.trim();
@@ -566,5 +569,253 @@
 
   /* ── Footer year ── */
   $("year").textContent = new Date().getFullYear();
+
+  /* ══════════════════════════════════════════════════════
+     LOGIN / REGISTER — client-side demo account system
+     NOTE: Accounts are stored in this browser's localStorage
+     only (no real server/database). Passwords are hashed
+     with SHA-256 before storage, but this is still a
+     front-end demo, not a substitute for real server-side
+     authentication. Good for prefilling forms / a personal
+     "logged in" feel on this static site.
+  ══════════════════════════════════════════════════════ */
+  const USERS_KEY   = "src_users";
+  const SESSION_KEY = "src_session";
+
+  function loadUsers(){ try{ return JSON.parse(localStorage.getItem(USERS_KEY)||"[]"); }catch(e){ return []; } }
+  function saveUsers(list){ localStorage.setItem(USERS_KEY, JSON.stringify(list)); }
+  function getSession(){ try{ return JSON.parse(localStorage.getItem(SESSION_KEY)||"null"); }catch(e){ return null; } }
+  function setSession(user){ localStorage.setItem(SESSION_KEY, JSON.stringify(user)); }
+  function clearSession(){ localStorage.removeItem(SESSION_KEY); }
+
+  async function hashPassword(str) {
+    try {
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(str));
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,"0")).join("");
+    } catch (e) {
+      // Fallback for very old browsers without SubtleCrypto
+      let h = 0; for (let i=0;i<str.length;i++){ h=(h<<5)-h+str.charCodeAt(i); h|=0; }
+      return "fb"+h;
+    }
+  }
+
+  /* ── Toasts ── */
+  const toastStack = $("toastStack");
+  function showToast(message, type="success", icon) {
+    if (!toastStack) return;
+    const t = document.createElement("div");
+    t.className = "toast" + (type==="error" ? " toast-error" : "");
+    t.innerHTML = `<span class="toast-icon">${icon || (type==="error" ? "⚠️" : "✔️")}</span><span>${message}</span>`;
+    toastStack.appendChild(t);
+    setTimeout(() => {
+      t.classList.add("toast-out");
+      t.addEventListener("animationend", () => t.remove(), { once:true });
+    }, 3200);
+  }
+
+  /* ── Header UI sync ── */
+  const loginNavBtn      = $("loginNavBtn");
+  const userChip         = $("userChip");
+  const userAvatar       = $("userAvatar");
+  const userNameDisplay  = $("userNameDisplay");
+  const logoutBtn        = $("logoutBtn");
+
+  function prefillFromSession(user) {
+    if (!user) return;
+    const fn = $("fullName"), ph = $("phone");
+    if (fn && !fn.value) fn.value = user.name;
+    if (ph && !ph.value) ph.value = user.phone;
+    const on = $("ol-name"), op = $("ol-phone"), oe = $("ol-email");
+    if (on && !on.value) on.value = user.name;
+    if (op && !op.value) op.value = user.phone;
+    if (oe && !oe.value) oe.value = user.email;
+  }
+
+  /* ══════════════════════════════════════════════════════
+     APPLY ONLINE — login-required gate
+     Only a logged-in user can see/use the online application
+     form; everyone else sees a friendly "register to apply
+     online" panel instead.
+  ══════════════════════════════════════════════════════ */
+  const onlineLocked  = $("onlineLocked");
+  const onlineContent = $("onlineContent");
+  const onlineTabLock = $("onlineTabLock");
+
+  function updateOnlineAccess() {
+    const loggedIn = !!getSession();
+    if (onlineTabLock) onlineTabLock.hidden = loggedIn;
+    if (!onlineLocked || !onlineContent) return;
+    onlineLocked.hidden  = loggedIn;
+    onlineContent.hidden = !loggedIn;
+  }
+
+  function updateAuthUI() {
+    const user = getSession();
+    if (user) {
+      loginNavBtn.hidden = true;
+      userChip.hidden = false;
+      userAvatar.textContent = (user.name||"?").trim().charAt(0).toUpperCase();
+      userNameDisplay.textContent = user.name;
+      prefillFromSession(user);
+    } else {
+      loginNavBtn.hidden = false;
+      userChip.hidden = true;
+    }
+    updateOnlineAccess();
+  }
+  updateAuthUI();
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", () => {
+      clearSession();
+      updateAuthUI();
+      showToast("You've been logged out.", "success", "👋");
+    });
+  }
+
+  const lockedRegisterBtn  = $("lockedRegisterBtn");
+  const lockedLoginBtn     = $("lockedLoginBtn");
+  const lockedSwitchOffline = $("lockedSwitchOffline");
+  if (lockedRegisterBtn)  lockedRegisterBtn.addEventListener("click", () => openAuthModal("register"));
+  if (lockedLoginBtn)     lockedLoginBtn.addEventListener("click", () => openAuthModal("login"));
+  if (lockedSwitchOffline) lockedSwitchOffline.addEventListener("click", e => { e.preventDefault(); switchTab("offline"); });
+
+  /* ── Modal open / close ── */
+  const authOverlay  = $("authOverlay");
+  const authModal    = $("authModal");
+  const authClose    = $("authClose");
+  const authTabs     = $("authTabs");
+  const authTitle    = $("authTitle");
+  const authSubtitle = $("authSubtitle");
+  const loginForm    = $("loginForm");
+  const registerForm = $("registerForm");
+  const loginError   = $("loginError");
+  const registerError= $("registerError");
+
+  function clearAuthErrors() {
+    [loginError, registerError].forEach(el => { el.textContent=""; el.classList.remove("show"); });
+  }
+
+  function setAuthTab(which) {
+    document.querySelectorAll(".atab").forEach(b => b.classList.toggle("active", b.dataset.atab === which));
+    authTabs.classList.toggle("reg-active", which === "register");
+    loginForm.classList.toggle("active", which === "login");
+    registerForm.classList.toggle("active", which === "register");
+    authTitle.textContent    = which === "login" ? "Welcome Back" : "Create Your Account";
+    authSubtitle.textContent = which === "login"
+      ? "Login to manage your bookings and applications"
+      : "Register once — we'll remember your details next time";
+    clearAuthErrors();
+  }
+
+  function openAuthModal(tab="login") {
+    setAuthTab(tab);
+    authOverlay.classList.add("open");
+    document.body.style.overflow = "hidden";
+    setTimeout(() => { const f = tab==="login" ? $("li-identifier") : $("re-name"); f && f.focus(); }, 350);
+  }
+  function closeAuthModal() {
+    authOverlay.classList.remove("open");
+    document.body.style.overflow = "";
+  }
+
+  if (loginNavBtn) loginNavBtn.addEventListener("click", () => openAuthModal("login"));
+  if (authClose)   authClose.addEventListener("click", closeAuthModal);
+  if (authOverlay) authOverlay.addEventListener("click", e => { if (e.target === authOverlay) closeAuthModal(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && authOverlay.classList.contains("open")) closeAuthModal(); });
+
+  document.querySelectorAll(".atab").forEach(btn => btn.addEventListener("click", () => setAuthTab(btn.dataset.atab)));
+  document.querySelectorAll("[data-switch]").forEach(link => link.addEventListener("click", e => {
+    e.preventDefault(); setAuthTab(link.dataset.switch);
+  }));
+
+  function shakeModal() {
+    authModal.classList.remove("shake");
+    void authModal.offsetWidth;
+    authModal.classList.add("shake");
+  }
+
+  function showAuthError(el, msg) {
+    el.textContent = msg; el.classList.add("show"); shakeModal();
+  }
+
+  /* ── Password show/hide toggles ── */
+  document.querySelectorAll(".pw-toggle").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const input = $(btn.dataset.target);
+      if (!input) return;
+      const show = input.type === "password";
+      input.type = show ? "text" : "password";
+      btn.textContent = show ? "🙈" : "👁️";
+    });
+  });
+
+  /* ── Register ── */
+  if (registerForm) {
+    registerForm.addEventListener("submit", async function(e) {
+      e.preventDefault();
+      clearAuthErrors();
+
+      const name    = $("re-name").value.trim();
+      const phone   = $("re-phone").value.trim();
+      const email   = $("re-email").value.trim().toLowerCase();
+      const pass    = $("re-password").value;
+      const confirm = $("re-confirm").value;
+
+      if (!name || !phone || !email || !pass || !confirm) { showAuthError(registerError, "Please fill in every field."); return; }
+      if (!/^[0-9]{10}$/.test(phone))                       { showAuthError(registerError, "Enter a valid 10-digit mobile number."); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))        { showAuthError(registerError, "Enter a valid email address."); return; }
+      if (pass.length < 6)                                  { showAuthError(registerError, "Password must be at least 6 characters."); return; }
+      if (pass !== confirm)                                 { showAuthError(registerError, "Passwords do not match."); return; }
+
+      const users = loadUsers();
+      if (users.some(u => u.phone === phone))               { showAuthError(registerError, "An account with this mobile number already exists."); return; }
+      if (users.some(u => u.email === email))               { showAuthError(registerError, "An account with this email already exists."); return; }
+
+      const submitBtn = $("registerSubmitBtn");
+      submitBtn.disabled = true; submitBtn.innerHTML = `<span class="btn-spinner"></span> Creating account…`;
+
+      const passwordHash = await hashPassword(pass);
+      const user = { id: "u_"+Date.now(), name, phone, email, passwordHash, createdAt: Date.now() };
+      users.push(user); saveUsers(users);
+
+      setSession({ name, phone, email });
+      updateAuthUI();
+      closeAuthModal();
+      registerForm.reset();
+      submitBtn.disabled = false; submitBtn.innerHTML = "Create Account";
+      showToast(`Welcome, ${name.split(" ")[0]}! Your account is ready.`, "success", "🎉");
+    });
+  }
+
+  /* ── Login ── */
+  if (loginForm) {
+    loginForm.addEventListener("submit", async function(e) {
+      e.preventDefault();
+      clearAuthErrors();
+
+      const identifier = $("li-identifier").value.trim().toLowerCase();
+      const pass        = $("li-password").value;
+      if (!identifier || !pass) { showAuthError(loginError, "Please enter your mobile/email and password."); return; }
+
+      const users = loadUsers();
+      const user = users.find(u => u.email === identifier || u.phone === identifier);
+      if (!user) { showAuthError(loginError, "No account found with that mobile number or email."); return; }
+
+      const submitBtn = $("loginSubmitBtn");
+      submitBtn.disabled = true; submitBtn.innerHTML = `<span class="btn-spinner"></span> Logging in…`;
+
+      const passwordHash = await hashPassword(pass);
+      submitBtn.disabled = false; submitBtn.innerHTML = "Login";
+
+      if (passwordHash !== user.passwordHash) { showAuthError(loginError, "Incorrect password. Please try again."); return; }
+
+      setSession({ name: user.name, phone: user.phone, email: user.email });
+      updateAuthUI();
+      closeAuthModal();
+      loginForm.reset();
+      showToast(`Welcome back, ${user.name.split(" ")[0]}!`, "success", "👋");
+    });
+  }
 
 })();
