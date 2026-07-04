@@ -37,9 +37,9 @@
   ];
 
   const STORAGE_KEY   = "src_v2";
-  const MAX_BYTES     = 20 * 1024 * 1024;
   const ALLOWED_EXT   = /\.(pdf|jpg|jpeg|png)$/i;
   const ALLOWED_MIME  = ["application/pdf","image/jpeg","image/jpg","image/png"];
+  const MAX_BYTES     = 20 * 1024 * 1024; // 20 MB total upload limit
 
   /* ── UTILS ───────────────────────────────────────────── */
   const $ = id => document.getElementById(id);
@@ -55,28 +55,46 @@
   function waLink(ph,msg){return`https://wa.me/${ph}?text=${encodeURIComponent(msg)}`}
 
   /* ══════════════════════════════════════════════════════
-     PAGE LOADER
+     PAGE LOAD PROGRESS BAR
   ══════════════════════════════════════════════════════ */
-  window.addEventListener("load", () => {
-    setTimeout(() => {
-      const loader = $("pageLoader");
-      if (loader) loader.classList.add("done");
-    }, 1400);
+  const loadBar = $("loadBar");
+  if (loadBar) {
+    requestAnimationFrame(() => { loadBar.style.width = "70%"; });
+    window.addEventListener("load", () => {
+      loadBar.style.width = "100%";
+      setTimeout(() => loadBar.classList.add("done"), 350);
+      setTimeout(() => { loadBar.style.display = "none"; }, 900);
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════
+     HERO ENTRANCE ANIMATIONS
+     Hero elements (anim-slide-up / anim-slide-right) are
+     above the fold, so trigger them right away rather than
+     waiting for a scroll-based IntersectionObserver.
+  ══════════════════════════════════════════════════════ */
+  requestAnimationFrame(() => {
+    document.querySelectorAll(".anim-slide-up, .anim-slide-right").forEach(el => {
+      el.classList.add("visible");
+    });
   });
 
   /* ══════════════════════════════════════════════════════
      SCROLL REVEAL — IntersectionObserver
+     Covers every other section (anim-up / anim-left /
+     anim-right / anim-scale) as it enters the viewport.
   ══════════════════════════════════════════════════════ */
-  const observer = new IntersectionObserver((entries) => {
+  const revealObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         entry.target.classList.add("visible");
-        observer.unobserve(entry.target);
+        revealObserver.unobserve(entry.target);
       }
     });
   }, { threshold: 0.12, rootMargin: "0px 0px -40px 0px" });
 
-  document.querySelectorAll(".reveal").forEach(el => observer.observe(el));
+  document.querySelectorAll(".anim-up, .anim-left, .anim-right, .anim-scale")
+    .forEach(el => revealObserver.observe(el));
 
   /* ══════════════════════════════════════════════════════
      COUNTER ANIMATION for hero stats
@@ -87,7 +105,12 @@
       const p = Math.min((now - start) / duration, 1);
       const ease = 1 - Math.pow(1 - p, 3);
       el.textContent = Math.round(ease * target);
-      if (p < 1) requestAnimationFrame(tick);
+      if (p < 1) {
+        requestAnimationFrame(tick);
+      } else {
+        el.classList.add("count-done");
+        setTimeout(() => el.classList.remove("count-done"), 350);
+      }
     };
     requestAnimationFrame(tick);
   }
@@ -95,8 +118,8 @@
   const heroObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
-        document.querySelectorAll(".count-num").forEach(el => {
-          animateCount(el, parseInt(el.dataset.target));
+        document.querySelectorAll(".hero-stats [data-count]").forEach(el => {
+          animateCount(el, parseInt(el.dataset.count, 10));
         });
         heroObserver.disconnect();
       }
@@ -107,12 +130,69 @@
   if (statsEl) heroObserver.observe(statsEl);
 
   /* ══════════════════════════════════════════════════════
-     HEADER — shadow on scroll
+     HEADER — shadow + hide-on-scroll-down
   ══════════════════════════════════════════════════════ */
   const header = document.querySelector(".site-header");
+  let lastScrollY = window.scrollY;
   window.addEventListener("scroll", () => {
-    header && header.classList.toggle("scrolled", window.scrollY > 20);
+    const y = window.scrollY;
+    if (!header) return;
+    header.classList.toggle("scrolled", y > 20);
+    if (y > lastScrollY && y > 160) {
+      header.classList.add("hide-on-scroll");   // scrolling down — hide
+    } else {
+      header.classList.remove("hide-on-scroll"); // scrolling up — show
+    }
+    lastScrollY = y;
   }, { passive: true });
+
+  /* ══════════════════════════════════════════════════════
+     BACK TO TOP BUTTON
+  ══════════════════════════════════════════════════════ */
+  const backToTop = $("backToTop");
+  if (backToTop) {
+    window.addEventListener("scroll", () => {
+      backToTop.classList.toggle("show", window.scrollY > 500);
+    }, { passive: true });
+    backToTop.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════
+     BUTTON RIPPLE EFFECT — applies to every .btn
+  ══════════════════════════════════════════════════════ */
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".btn");
+    if (!btn || btn.disabled) return;
+    const rect = btn.getBoundingClientRect();
+    const ripple = document.createElement("span");
+    const size = Math.max(rect.width, rect.height);
+    ripple.className = "btn-ripple";
+    ripple.style.width = ripple.style.height = size + "px";
+    ripple.style.left = (e.clientX - rect.left - size / 2) + "px";
+    ripple.style.top  = (e.clientY - rect.top - size / 2) + "px";
+    btn.appendChild(ripple);
+    ripple.addEventListener("animationend", () => ripple.remove());
+  });
+
+  /* ══════════════════════════════════════════════════════
+     HERO CARD — subtle mouse-tracking 3D tilt
+  ══════════════════════════════════════════════════════ */
+  const heroCard = $("heroCard");
+  if (heroCard) {
+    heroCard.addEventListener("mousemove", (e) => {
+      const rect = heroCard.getBoundingClientRect();
+      const px = (e.clientX - rect.left) / rect.width - 0.5;
+      const py = (e.clientY - rect.top) / rect.height - 0.5;
+      heroCard.style.setProperty("--rx", (px * 8).toFixed(2) + "deg");
+      heroCard.style.setProperty("--ry", (-py * 8).toFixed(2) + "deg");
+    });
+    heroCard.addEventListener("mouseleave", () => {
+      heroCard.style.setProperty("--rx", "0deg");
+      heroCard.style.setProperty("--ry", "0deg");
+    });
+  }
 
   /* ══════════════════════════════════════════════════════
      MOBILE NAV
@@ -133,8 +213,13 @@
   ══════════════════════════════════════════════════════ */
   function switchTab(which) {
     document.querySelectorAll(".btab").forEach(b => b.classList.toggle("active", b.dataset.tab === which));
-    $("tabOffline").hidden = which !== "offline";
-    $("tabOnline").hidden  = which !== "online";
+    const paneOn  = which === "offline" ? $("tabOffline") : $("tabOnline");
+    const paneOff = which === "offline" ? $("tabOnline")  : $("tabOffline");
+    paneOff.hidden = true;
+    paneOn.hidden = false;
+    paneOn.classList.remove("tab-anim");
+    void paneOn.offsetWidth; // force reflow so the animation replays
+    paneOn.classList.add("tab-anim");
   }
   document.querySelectorAll(".btab").forEach(btn => btn.addEventListener("click", () => switchTab(btn.dataset.tab)));
 
@@ -347,8 +432,18 @@
     });
     fileListEl.querySelectorAll(".file-chip-remove").forEach(btn => {
       btn.addEventListener("click", () => {
-        selectedFiles.splice(+btn.dataset.i, 1);
-        renderFileList();
+        const chip = btn.closest(".file-chip");
+        const idx = +btn.dataset.i;
+        if (chip) {
+          chip.classList.add("removing");
+          chip.addEventListener("animationend", () => {
+            selectedFiles.splice(idx, 1);
+            renderFileList();
+          }, { once: true });
+        } else {
+          selectedFiles.splice(idx, 1);
+          renderFileList();
+        }
       });
     });
     // update total
@@ -406,7 +501,7 @@
   const onlineSuccess   = $("onlineSuccess");
   const onlineSubmitBtn = $("onlineSubmitBtn");
   const onlineResetBtn  = $("onlineResetBtn");
-  const hiddenIframe    = $("hidden_iframe");
+  const hiddenIframe    = $("fs-iframe");
 
   let formJustSubmitted = false;   // flag to ignore iframe's initial load
 
