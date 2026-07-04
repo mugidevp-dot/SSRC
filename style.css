@@ -15,6 +15,11 @@
   --font-body:"Poppins",sans-serif;
 }
 *{box-sizing:border-box;margin:0;padding:0}
+/* The native `hidden` attribute must always win over a component's own
+   display rule (e.g. .btn{display:inline-flex}, .user-chip{display:flex},
+   .booking-layout{display:grid}) — otherwise elements toggled via
+   el.hidden = true/false in JS stay visible even when "hidden" is set. */
+[hidden]{display:none!important}
 html{scroll-behavior:smooth}
 body{font-family:var(--font-body);color:var(--ink);background:var(--cream);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 a{color:inherit;text-decoration:none}
